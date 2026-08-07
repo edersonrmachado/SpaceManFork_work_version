@@ -1,0 +1,5 @@
+skyfield
+requests
+matplotlib
+folium
+pandas
