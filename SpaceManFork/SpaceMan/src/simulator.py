@@ -3,7 +3,8 @@
 from doppler_libsat import *
 from doppler_classes import *
 from doppler_utils import *
-
+# link budget functions
+from link_budget_test import *
 
 from datetime import datetime, timezone
 import json
@@ -37,6 +38,8 @@ import csv
 ############################################################
 # SIMULATION CONFIGURATION
 ############################################################
+link_config_filename = "config/link_config.json"
+
 RANDOM_PAYLOAD=False
 
 SIMULATION_START = datetime(
@@ -193,6 +196,12 @@ def print_collision_summary(
         f"{initial_pdr:.2f}%"
     )
 
+## add file to config link variables 
+def load_link_config(link_config_filename):
+    with open(link_config_filename, "r") as f:
+        link_config = json.load(f)
+
+    return link_config
 
 def apply_doppler_and_visibility(
     network,
@@ -222,6 +231,14 @@ def apply_doppler_and_visibility(
     visible_packet_count = 0
     
     doppler_exception_count=0
+
+    ## add link margin registers
+
+    link_margin_ok_count=0
+
+    link_margin_failed_count=0
+
+    link_config = load_link_config(link_config_filename)
 
     for dev, pkt, cfg in non_colliding:
 
@@ -281,11 +298,23 @@ def apply_doppler_and_visibility(
                     ## add ds_error dr_error to specify doppler error type
                     
                     visible_packet_count += 1
+                    link_margin_1, link_margin_2, link_pass = compute_link_margin(sat_name, 
+                                                      lora_cfg, 
+                                                      ed_pos, 
+                                                      tx_time,link_config
+                    )
+                    if link_pass==0:
+                        link_margin_failed_count+=1      
+                        break
+                    else:
+                        link_margin_ok_count+=1
+                    
+                    
                     status, max_payload, ds_error,dr_error = checkComm(
-                        sat_name,
-                        lora_cfg,
-                        ed_pos,
-                        tx_time
+                            sat_name,
+                            lora_cfg,
+                            ed_pos,
+                            tx_time
                     )
                     
                     ####################################################

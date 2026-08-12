@@ -1,0 +1,23 @@
+{
+    "iot_node": {
+        "pt_dbm": 22,
+        "lftx": 1,
+        "gt": 4
+    },
+
+    "propagation_losses": {
+        "la": -0.11,
+        "li": -0.16,
+        "ld": -3.0,
+        "lp": -3.0
+    },
+
+    "satellite_receiver": {
+        "gr": -3.5,
+        "lfrx": 1,
+        "nf": 6.5,
+        "temp_0": 290,
+        "gf": -1.0,
+        "ta": 290
+    }
+}

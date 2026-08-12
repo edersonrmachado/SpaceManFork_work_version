@@ -1,24 +1,27 @@
 
-# iot node EIRP
+from datetime import timedelta
+import time
+from skyfield.api import load, wgs84
+import matplotlib.pyplot as plt
+import numpy as np
+import copy
+from doppler_classes import *
+from doppler_tle import *
+from doppler_lora import *
+from doppler_libsat import *
+
+
 import math
 
 
-
+PRINT_LINK_BUDGET = True
 
 def snr_min_db(sf):
     return -7.5 - 2.5 * (sf - 7)
 
-def free_space_loss(lfs):
-    """Calculate the free space loss in dB.
-    Args:
-        tx_time (xxx): 
-        tx_position (xxx):
-        sat TLE (xxx): 
-    Returns:
-        float: Free space loss in dB.
-    """
-    return lfs
 
+
+# iot node EIRP
 pt_dbm = 22 # transmission power in dBm
 pt_dbw = pt_dbm - 30 # transmission power in dBW
 
@@ -28,13 +31,13 @@ eirp_dbm = pt_dbm - lftx + gt  # Effective Isotropic Radiated Power in dBm
 eirp_dbw = eirp_dbm - 30 # Effective Isotropic Radiated Power in dBW
 
 # free space propagation loss
-lfs = free_space_loss(-150.1) # free space propagation loss in dB
+lfs = -150.1 # free space propagation loss in dB
 
 # other progagation losses
 la = -0.11 # atmospheric attenuation Loss in dB              
 li = -0.16 # ionospheric attenuation Loss in dB
 ld = -3.0 # depointing Losses (antenna misalignment) in dB
-lp = -3.0 # pola'''rization Mismatch Loss in dB   
+lp = -3.0 # polarization Mismatch Loss in dB   
 l  = la + li + ld + lp # other propagation losses in dB
 
 # satellite figure of merit
@@ -54,14 +57,6 @@ t_sis = ta + tf + terx/(10**(gf/10)) # system noise temperature in K
 gr_ts = gr - lfrx - 10*math.log10(t_sis) # receiver figure of merit in dB/K
     
 k = 1.38e-23  # Boltzmann constant times reference temperature
-
-No_dBW=10*math.log10(k*t_sis)
-print(No_dBW)
-No_dBm=No_dBW+30
-print(No_dBm)
-
-
-
 bw = 125000   # bandwidth in Hz
 sf=11
 
@@ -77,71 +72,72 @@ link_margin_1=eirp_dbw+lfs+l-10*math.log10(bw)+gr_ts+10*math.log10(1/k)-snr_min
 
 ## method 2
 
-nr=6.5 # receiver noise figure in dB
+sensitivity_2=-174+nf+10*math.log10(bw)+snr_min # receiver sensitivity in dBm
+link_margin_2=pr-sensitivity_2
+
+
+
 sensitivity_1=10*math.log10(k*t_sis*bw)+snr_min +30 # receiver sensitivity in dBm
+dif=sensitivity_1-sensitivity_2 
 
 
-sensitivity_2=-174+nr+10*math.log10(bw)+snr_min # receiver sensitivity in dBm
+if  PRINT_LINK_BUDGET:
 
-print(f"sensitivity_1 = {sensitivity_1:.2f} dBm")
-print(f"sensitivity_2 = {sensitivity_2:.2f} dBm")
-dif=sensitivity_1-sensitivity_2
-print(f"difference = {dif:.2f} dB") 
-quit()
-#link_margin_2=pr-10*math.log10(k*t_sis*bw)-snr_min
-
-# PRINT
-
-print("------------ EIRP IoT node ----------")
+    print("------------ EIRP IoT node ----------")
 
 
-print("pt_dbm =", pt_dbm, "dBm")
-print("lftx =", lftx, "dB")
-print("gt =", gt, "dBi")
-print("eirp_dbm =", eirp_dbm, "dBm")
-print("eirp_dbw =", eirp_dbw, "dBW")
+    print("pt_dbm =", pt_dbm, "dBm")
+    print("lftx =", lftx, "dB")
+    print("gt =", gt, "dBi")
+    print("eirp_dbm =", eirp_dbm, "dBm")
+    print("eirp_dbw =", eirp_dbw, "dBW")
 
-print("----------- Free space loss ---------")
+    print("----------- Free space loss ---------")
 
-print("lfs =", lfs, "dB")
+    print("lfs =", lfs, "dB")
 
-print("----- Other Propagation Losses ------")
+    print("----- Other Propagation Losses ------")
 
-print("la =", la, "dB")
-print("li =", li, "dB")
-print("ld =", ld, "dB")
-print("lp =", lp, "dB")
-print("l =", l, "dB")
+    print("la =", la, "dB")
+    print("li =", li, "dB")
+    print("ld =", ld, "dB")
+    print("lp =", lp, "dB")
+    print("l =", l, "dB")
 
-print("----- Receiver Figure of Merit -----")
+    print("----- Receiver Figure of Merit -----")
 
-print("gr =", gr, "dBi")
-print("lfrx =", lfrx, "dB")
-print("nf =", nf, "dB")
-print("temp_0 =", temp_0, "K")
+    print("gr =", gr, "dBi")
+    print("lfrx =", lfrx, "dB")
+    print("nf =", nf, "dB")
+    print("temp_0 =", temp_0, "K")
 
-print(f"tf = {tf:.1f} K")
-print(f"terx = {terx:.1f} K")
-print("gf =", gf, "dB")
-print("ta =", ta, "K")
-print(f"t_sis = {t_sis:.1f} K")
-print(f"gr_ts = {gr_ts:.1f} dB/K")
+    print(f"tf = {tf:.1f} K")
+    print(f"terx = {terx:.1f} K")
+    print("gf =", gf, "dB")
+    print("ta =", ta, "K")
+    print(f"t_sis = {t_sis:.1f} K")
+    print(f"gr_ts = {gr_ts:.1f} dB/K")
 
-print("------- Boltzmann Constant --------")
+    print("------- Boltzmann Constant --------")
 
-print("k =", k, "W/K/Hz")
+    print("k =", k, "W/K/Hz")
 
-print("---------- Bandwidth --------------")
-print("bw =", bw, "Hz")
-print("- Required Carrier to noise Ratio -")
-print("snr_min =", snr_min, "dB")
+    print("---------- Bandwidth --------------")
+    print("bw =", bw, "Hz")
+    print("- Required Carrier to noise Ratio -")
+    print("snr_min =", snr_min, "dB")
 
-print("---------- Received Power -----------")
-print(f"pr = {pr:.1f} dBm")
+    print("---------- Received Power -----------")
+    print(f"pr = {pr:.1f} dBm")
 
-print("---------- Link Margin -----------")
-print(f"link_margin_1 = {link_margin_1:.2f} dB")
-#print(f"link_margin_2 = {link_margin_2:.2f} dB")
+    print("---------- Link Margin -----------")
+    print(f"link_margin_1 = {link_margin_1:.2f} dB")
+    print(f"link_margin_2 = {link_margin_2:.2f} dB")
+
+    print("-------- Receiver Sensitivity ---------")
+    print(f"sensitivity_1 = {sensitivity_1:.2f} dBm")
+    print(f"sensitivity_2 = {sensitivity_2:.2f} dBm")
+    print(f"difference = {dif:.2f} dB") 
 
 
 
