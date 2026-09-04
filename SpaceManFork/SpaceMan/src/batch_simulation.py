@@ -1,10 +1,12 @@
 import json
 import subprocess
 
-bw=31.25
+bw=125
 ldro_mode=0
-freqs=[433,868,915]
-pkt_lens=[35,50,100,200]
+#freqs=[433,868,915]
+#pkt_lens=[35,50,100,200]
+freqs=[433]
+pkt_lens=[35,100,200]
 pkt_per_endpoint=100
 tx_power=1
 

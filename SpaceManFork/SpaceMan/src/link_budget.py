@@ -15,18 +15,7 @@ import math
 
 BOLTZMANN_CONSTANT = 1.38e-23  # Boltzmann constant in J/K
 LIGHT_SPEED = 299792458.0
-PRINT_LINK_BUDGET = True
-
-#link_config_filename = "config/link_config.json"
-
-
-# read link configuration from JSON file
-#def load_link_config(link_config_filename):
-#    
-#    with open(link_config_filename, "r") as f:
-#        link_config = json.load(f)
-
-#    return link_config
+PRINT_LINK_BUDGET = False # debug
 
 
 def snr_min_db(sf):
@@ -35,11 +24,13 @@ def snr_min_db(sf):
 def free_space_loss(sat_id, lora_cfg, ed_pos, tx_time):
     """Calculate the free space loss in dB.
     Args:
-        tx_time (xxx): 
-        ed_position (xxx): 
-        sat_id (xxx): to extract TLE 
+        sat_id (str): Satellite ID to extract TLE.
+        lora_cfg (dict): LoRa configuration parameters.
+        ed_position (xxx): End device position with latitude and longitude. 
+        tx_time (xx): Transmission time.
+        
     Returns:
-        float: Free space loss in dB.
+        lfs (float): Free space loss in dB.
     """
     local = wgs84.latlon(
         latitude_degrees=ed_pos.latitude, longitude_degrees=ed_pos.longitude
@@ -78,11 +69,11 @@ def compute_link_margin(sat_id, lora_cfg, ed_pos, tx_time,link_config):
         link_config (dict): Link configuration parameters.
     
     Returns:
-        link_margin (float): Link margin in dB.
+        link_margin_1 (float): Link margin in dB "our" method.
+        link_margin_2 (float): Link margin in dB "articles" method.
+        link_pass (int): 1 if link margin is positive, 0 otherwise.
+
     """
-
-    #link_config = load_link_config(link_config_filename)
-
 
     # iot node EIRP
     pt_dbm =link_config["iot_node"]["pt_dbm"] # transmission power in dBm
@@ -113,35 +104,28 @@ def compute_link_margin(sat_id, lora_cfg, ed_pos, tx_time,link_config):
     tf = (10**(lfrx/10)-1)*temp_0 # receiver line noise temperature in K
     terx = (10**(nf/10)-1)*tf # receiver module noise temperature in K
 
-
     gf= link_config["satellite_receiver"]["gf"] # receiver line gain in dB 
     ta = link_config["satellite_receiver"]["ta"] # antenna noise temperature in K   
 
+    # System temperature 
     t_sis = ta + tf + terx/(10**(gf/10)) # system noise temperature in K
     gr_ts = gr - lfrx - 10*math.log10(t_sis) # receiver figure of merit in dB/K
         
-    
-    bw = 125000   # bandwidth in Hz
-    sf=11   # spreading factor           
+    bw =lora_cfg.bw   # bandwidth in Hz
+    sf=lora_cfg.sf   # spreading factor           
 
     snr_min = snr_min_db(sf) # minimal SNR in dB for correspondent SF
     pr=eirp_dbm + lfs + l # received power in dBm
-
 
     ## method 1 (our)
     link_margin_1=eirp_dbw+lfs+l-10*math.log10(bw)+gr_ts+10*math.log10(1/BOLTZMANN_CONSTANT)-snr_min
     sensitivity_1=10*math.log10(BOLTZMANN_CONSTANT*t_sis*bw)+snr_min +30 # receiver sensitivity in dBm
     
-
     ## method 2 (articles)
     sensitivity_2=-174+nf+10*math.log10(bw)+snr_min # receiver sensitivity in dBm
 
-
     dif=sensitivity_1-sensitivity_2 
-    link_margin_2=pr-sensitivity_2
-
-
-    
+    link_margin_2=pr-sensitivity_2    
 
     if  PRINT_LINK_BUDGET:
 
@@ -180,6 +164,9 @@ def compute_link_margin(sat_id, lora_cfg, ed_pos, tx_time,link_config):
         print(f"t_sis = {t_sis:.1f} K")
         print(f"gr_ts = {gr_ts:.1f} dB/K")
 
+        print(f"lfs = {lfs:.2f} dB")
+
+
         print("------- Boltzmann Constant --------")
 
         print("k =", BOLTZMANN_CONSTANT, "W/K/Hz")
@@ -201,9 +188,9 @@ def compute_link_margin(sat_id, lora_cfg, ed_pos, tx_time,link_config):
         print(f"sensitivity_2 = {sensitivity_2:.2f} dBm")
         print(f"difference = {dif:.2f} dB") 
 
-        link_pass = 0 if link_margin_1 < 0 else 1     
+    link_pass = 0 if link_margin_1 < 0 else 1     
 
-        return link_margin_1, link_margin_2, link_pass
+    return link_margin_1, link_margin_2, link_pass
 
 
 

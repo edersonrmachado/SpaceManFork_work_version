@@ -1,1 +1,10 @@
-[{"sf": 12, "bw": 31.25, "ldro": 0, "frequency": 915, "pkt_len": 200, "tx_power": 1, "pkt_per_endpoint": 100, "results_file": "../data/bw31.25_ldro0_f915_plen200_pped100_txp1.csv"}]
+[{
+    "sf": 7, 
+    "bw": 125, 
+    "ldro": 0, 
+    "frequency": 433, 
+    "pkt_len": 200, 
+    "tx_power": 1, 
+    "pkt_per_endpoint": 100, 
+    "results_file": "../data/bw125_ldro0_f433_plen200_pped100_txp1.csv"
+}]

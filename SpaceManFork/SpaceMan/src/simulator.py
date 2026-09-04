@@ -4,7 +4,8 @@ from doppler_libsat import *
 from doppler_classes import *
 from doppler_utils import *
 # link budget functions
-from link_budget_test import *
+from link_budget import *
+import time
 
 from datetime import datetime, timezone
 import json
@@ -38,6 +39,9 @@ import csv
 ############################################################
 # SIMULATION CONFIGURATION
 ############################################################
+
+start = time.perf_counter()
+
 link_config_filename = "config/link_config.json"
 
 RANDOM_PAYLOAD=False
@@ -59,6 +63,7 @@ END_TS = SIMULATION_END.timestamp()
 
 MIN_ELEVATION = 5
 
+"""
 SATELLITES = [
     "STARLINK-1017",
     "STARLINK-1012",
@@ -66,6 +71,47 @@ SATELLITES = [
     "STARLINK-1048",
     "STARLINK-1068"
 ]
+print(SATELLITES)
+"""
+
+
+def select_satellite_names():
+
+    CONFIG_FILE = "config/sat_config.json"
+    TLE_FILE = "tle_active.txt"
+
+    with open(CONFIG_FILE, "r") as f:
+        config = json.load(f)
+    num_sats = config["num_sats"]
+    with open(TLE_FILE, "r") as f:
+        lines = f.readlines()
+    satellite_names = []
+
+    for line in lines:
+
+        name = line.strip()
+
+        if name.startswith("STARLINK-"):
+
+            satellite_names.append(name)
+
+            if len(satellite_names) >= num_sats:
+                break
+
+    if len(satellite_names) < num_sats:
+        raise ValueError(
+            f"Requested {num_sats} Starlinks, "
+            f"but only {len(satellite_names)} were found in {TLE_FILE}."
+        )            
+    
+    return satellite_names
+
+
+
+SATELLITES=select_satellite_names()
+
+# end additional code to store satellites list
+
 
 ############################################################
 # REPORTING HELPERS
@@ -240,6 +286,8 @@ def apply_doppler_and_visibility(
 
     link_config = load_link_config(link_config_filename)
 
+    ## 
+
     for dev, pkt, cfg in non_colliding:
 
         tx_start = pkt.txTime
@@ -294,21 +342,29 @@ def apply_doppler_and_visibility(
                     tz=timezone.utc
                 )
 
+                # link margin analysis before Doppler check                                      
+                visible_packet_count += 1
+
+                
+                link_margin_1, link_margin_2, link_pass = compute_link_margin(
+                    sat_name, 
+                    lora_cfg, 
+                    ed_pos, 
+                    tx_time,
+                    link_config
+                )
+
+
+                if link_pass == 0:
+                    link_margin_failed_count += 1
+                    continue
+
+                link_margin_ok_count += 1
+                    
+
                 try:
-                    ## add ds_error dr_error to specify doppler error type
                     
-                    visible_packet_count += 1
-                    link_margin_1, link_margin_2, link_pass = compute_link_margin(sat_name, 
-                                                      lora_cfg, 
-                                                      ed_pos, 
-                                                      tx_time,link_config
-                    )
-                    if link_pass==0:
-                        link_margin_failed_count+=1      
-                        break
-                    else:
-                        link_margin_ok_count+=1
-                    
+                    ## add ds_error dr_error to specify doppler error type    
                     
                     status, max_payload, ds_error,dr_error = checkComm(
                             sat_name,
@@ -405,7 +461,9 @@ def apply_doppler_and_visibility(
         "doppler_static_and_rate_count":doppler_static_and_rate_failed_count,
         "visible_packet_count":visible_packet_count,
         "doppler_exception_count":doppler_exception_count,
-        "toa":toa
+        "toa":toa,
+        "link_margin_ok_count":link_margin_ok_count,
+        "link_margin_failed_count":link_margin_failed_count
     }
 
 
@@ -553,10 +611,23 @@ def print_final_summary(
     )
     
     print(
-        f"Vis. packet transmitted  : "
+        f"Vis. packets             : "
         f"{stats['visible_packet_count']} "
     )
     
+    link_margin_pass_rate = (
+        stats["link_margin_ok_count"]
+        /
+        stats["visible_packet_count"]
+    ) * 100 if stats["visible_packet_count"] else 0
+
+    print(
+        f"Link margin passed       : "
+        f"{stats['link_margin_ok_count']} "
+        f"({link_margin_pass_rate:.2f}%)"
+    )
+
+
     
     doppler_fail_rate = (
         stats["doppler_failed"]
@@ -646,6 +717,12 @@ def print_final_summary(
     failed_energy_collided=len(collided)*pkt_energy
     failed_energy_visibility=stats['non_visible_count']*pkt_energy
     failed_energy_doppler=stats['doppler_failed']*pkt_energy
+    link_margin_energy_pass=stats['link_margin_ok_count']*pkt_energy
+    failed_energy_link_margin=stats['link_margin_failed_count']*pkt_energy
+    bytes_per_joule=(pkt_len*successfully_tx_received)/total_energy if total_energy>0 else 0
+
+
+
     num_sats=len(SATELLITES)
     
     with open("config/devices.json", "r") as f:
@@ -663,7 +740,8 @@ def print_final_summary(
                 "collided","non_visible","doppler_error","ds_error",
                 "dr_error","doppler_except_count","succes_rec_pkt","succes_rec_tx",
                 "final_pdr","succes_energy_trans","failed_energy_col","failed_energy_vis",
-                "failed_energy_dop","num_sats","num_devs"
+                "failed_energy_dop","num_sats","num_devs","link_margin_energy_pass",
+                "failed_energy_link_margin","bytes_per_joule"
             ])
         
         writer.writerow([f"{lora_cfgs[0].sf}", 
@@ -690,7 +768,10 @@ def print_final_summary(
                          f"{failed_energy_visibility:.6f}",
                          f"{failed_energy_doppler:.6f}",
                          f"{num_sats}",
-                         f"{num_eds}"
+                         f"{num_eds}",
+                         f"{link_margin_energy_pass:.6f}",
+                         f"{failed_energy_link_margin:.6f}",
+                         f"{bytes_per_joule:.2f}"
                          ])
        
 def print_gateway_statistics(network):
@@ -979,8 +1060,13 @@ print_final_summary(
     lora_cfgs
 )
 
-print_gateway_statistics(network)
+#print_gateway_statistics(network)
 
 print("\n============================================================")
 print("                 END OF SIMULATION")
 print("============================================================")
+
+
+end = time.perf_counter()
+
+print(end - start)

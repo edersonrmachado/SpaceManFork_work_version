@@ -13,6 +13,9 @@ from doppler_tle import *
 from doppler_lora import *
 import matplotlib.dates as mdates # para formatar datas nos eixos
 
+from pathlib import Path
+
+
 MIN_ALT = 5 # min elevation angle in degrees
 ANALYSIS_INTERVAL = 10 # in minutes
 EARTH_RADIUS = 6378137 # radius of the Earth in meters
@@ -20,11 +23,77 @@ GRAVITY = 9.80665 # gravity acceleration in m/s^2
 LIGHTSPEED = 299792458 # light speed in vacuum in m/s
 
 
+import os
+
+
+def search_satellite_tle_locally(sat_name, tle_file="tle_active.txt", output_dir="TLE"):
+    
+    with open(tle_file, "r") as f:
+        lines = [line.rstrip("\n") for line in f]
+
+    for i, line in enumerate(lines):
+
+        if line.strip() == sat_name:
+
+            if i + 2 >= len(lines):
+                raise ValueError(
+                    f"Incomplete TLE for satellite {sat_name}"
+                )
+
+            name = lines[i].strip()
+            line1 = lines[i + 1].strip()
+            line2 = lines[i + 2].strip()
+
+            if not line1.startswith("1 "):
+                raise ValueError(
+                    f"Invalid line 1 {sat_name}: {line1}"
+                )
+
+            if not line2.startswith("2 "):
+                raise ValueError(
+                    f"Invalid line 2 {sat_name}: {line2}"
+                )
+
+            os.makedirs(output_dir, exist_ok=True)
+            output_file = os.path.join(
+                output_dir,
+                f"{sat_name}.tle"
+            )
+
+            with open(output_file, "w") as f:
+                f.write(f"{name}\n")
+                f.write(f"{line1}\n")
+                f.write(f"{line2}\n")
+
+            print(f"TLE saved: {output_file}")
+
+            return True
+
+    print(f"Satellite not found locally: {sat_name}")
+
+    return False
+
+
 def loadSat(sat_name):
     """Return a satellite TLE object from its satellite name"""
     
-    downloadTLE(sat_name) # download TLE
+    sat_file = Path(f"TLE/{sat_name}.tle")
+
+    if not sat_file.exists():
+        sat_find_loccaly= search_satellite_tle_locally(sat_name) # search TLE locally
+
+        if not sat_find_loccaly:
+            downloadTLE(sat_name) # download TLE
+
     satellite = load.tle_file(f"{TLE_DIRECTORY}/{sat_name}.tle")[0] # get satellite info from TLE file
+
+    #satellites = load.tle_file("tle_active.txt")
+    #for satellite in satellites:
+
+    #    if satellite.name == sat_name:
+    #        return satellite
+
+    #raise ValueError(f"Satellite '{sat_name}' not found in tle_active.txt")
     return satellite
 
 
