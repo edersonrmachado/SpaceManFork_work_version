@@ -72,3 +72,50 @@ python graphs.py
 ## License
 
 This project is licensed under the XXXX License ...
+
+
+# Using LCTI server to speed up the simulations
+
+ 
+## Step 1: Connect to the SSH gateway:
+```
+ssh eribas@ssh.enst.fr
+```
+After entering your password, you'll be on the gateway server.
+
+## Step 2: From the gateway, connect to the cluster:
+```
+ssh eribas@gpu-gw
+```
+
+## Step 3: Request resources to run the code
+
+ It uses Slurm (Simple Linux Utility for Resource Management), a widely-used workload manager and job scheduler. 
+
+### Two ways to run jobs#
+
+Slurm provides two primary methods for running computational work:
+
+    - Interactive - For real-time interaction with compute resources
+    - Batch - Submit your task and disconnect
+
+Let's explore both methods in detail.
+
+#### Interactive jobs
+
+Interactive jobs give you a shell session on a compute node to run commands in real time — ideal for testing and debugging. The cluster provides a wrapper command, sinteractive, for starting them:
+```
+sinteractive
+```
+You'll see output like this:
+```
+srun: job 12345 queued and waiting for resources
+srun: job 12345 has been allocated resources
+```
+After a few moments (or longer if the cluster is busy), you'll get a shell prompt on a compute node:
+
+```
+<tp-username>@node19 ~$
+```
+
+

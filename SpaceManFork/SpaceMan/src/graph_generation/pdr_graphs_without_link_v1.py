@@ -6,19 +6,19 @@ import numpy as np
 
 # files to evaluate
 files=[
-"../data/bw125_ldro0_f433_plen35_pped100_txp1.csv",
-"../data/bw125_ldro0_f433_plen51_pped100_txp1.csv",
-"../data/bw125_ldro0_f433_plen100_pped100_txp1.csv",
-"../data/bw125_ldro0_f433_plen200_pped100_txp1.csv"
+"../../data/bw31.25_ldro0_f915_plen35_pped100_txp1.csv",
+"../../data/bw31.25_ldro0_f915_plen50_pped100_txp1.csv",
+"../../data/bw31.25_ldro0_f915_plen100_pped100_txp1.csv",
+"../../data/bw31.25_ldro0_f915_plen200_pped100_txp1.csv"
 ]
 
 # save the plots on `image_folder` if true
-SAVE_PLOTS=True
+SAVE_PLOTS=False
 image_folder="../figures/"
 
 # output filenames (freq_bw)
-fig_1='pdr433_125a.pdf'
-fig_2="energy433_125a.pdf"
+fig_1='pdr915_3125.pdf'
+fig_2="energy915_3125.pdf"
 
 # plots this limits must be customized according of max graph values
 y_sup_lim=44.99 # PDR plot
@@ -57,11 +57,9 @@ for i, file in enumerate(files):
     
     non_visible_pkt_pct=100*df["non_visible"]/df["total_pkt"]
     visible_pkt_pct= 100*(df["total_pkt"]-df["collided"]-df["non_visible"])/df["total_pkt"]
-    link_margin_pkt_pct=100*((df["link_margin_energy_pass"]/df["pkt_energy"]) /df["total_pkt"])
     collided_pkt_pct=100*df["collided"]/df["total_pkt"]
     doppler_error_pkt_pct=100*df["doppler_error"]/df["total_pkt"]
     success_rec_tx=100*df["succes_rec_tx"]/df["total_pkt"]
-
 
     x = np.arange(len(df["sf"]))
     
@@ -71,9 +69,7 @@ for i, file in enumerate(files):
                        color=vis_pkt_color, label="Visible")
     bars_doppler=ax[i].bar(x + 0.5*(width+gap), doppler_error_pkt_pct, width,
                        color=dop_error_pkt_color, label="Doppler error")
-    bars_link_margin=ax[i].bar(x + 1.5*(width+gap), link_margin_pkt_pct, width,
-                        color="lightcoral", label="Link Margin")
-    bars_received=ax[i].bar(x + 2.5*(width+gap), success_rec_tx, width,
+    bars_received=ax[i].bar(x + 1.5*(width+gap), success_rec_tx, width,
                         color=suc_rec_pkt_color, label="Received/PDR")
     
     for pos in range(len(x)-1):
@@ -104,7 +100,6 @@ for i, file in enumerate(files):
     ax[i].bar_label(bars_collided, fmt="%.0f", padding=2, fontsize=bar_lab_fontsize)
     ax[i].bar_label(bars_visible, fmt="%.0f", padding=2, fontsize=bar_lab_fontsize)
     ax[i].bar_label(bars_doppler, fmt="%.0f", padding=2, fontsize=bar_lab_fontsize)
-    ax[i].bar_label(bars_link_margin, fmt="%.0f", padding=2, fontsize=bar_lab_fontsize)                     
     ax[i].bar_label(bars_received, fmt="%.0f", padding=2, fontsize=bar_lab_fontsize)
         
 handles, labels = ax[0].get_legend_handles_labels()

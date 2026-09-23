@@ -56,6 +56,8 @@ def free_space_loss(sat_id, lora_cfg, ed_pos, tx_time):
 
     lfs=20*np.log10(distance)+20*np.log10(lora_cfg.fc)+20*np.log10(4*math.pi/LIGHT_SPEED) # free space propagation loss in dB
 
+    #print(tx_time,lfs)
+
     return -lfs
 
 

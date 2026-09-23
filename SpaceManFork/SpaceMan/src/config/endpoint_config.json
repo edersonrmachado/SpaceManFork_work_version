@@ -1,0 +1,16 @@
+{
+    "ed_geometry":
+    {
+    "central_point": {
+        "lat": 48.8566,
+        "lon":2.3522
+    },
+    "circle_radius_km": 100,
+    "distribution_seed": 2026
+    },
+    
+    "number_of_eds":20,
+    "pkt_per_endpoint": 100,
+    "transmission_policy":"random"  
+    
+}

@@ -4,7 +4,6 @@ from doppler_libsat import *
 from doppler_classes import *
 from doppler_utils import *
 from link_budget import *
-from generate_endpoint_positions import *
 from datetime import datetime, timezone
 from skyfield.api import load
 import json
@@ -38,78 +37,50 @@ from LISTutils import (
 
 start = time.perf_counter()
 
-simulation_config_filename="config/simulation_config.json"
-satellite_config_filename="config/satellite_config.json"
-lora_config_filename="config/lora_config.json"
-endpoint_config_filename="config/endpoint_config.json"
-link_margin_config_filename="config/link_margin_config.json"
-doppler_config_filename="config/doppler_config.json"
-
-tle_filename = "tle_active.txt"
-devices_filename="config/endpoint_positions/devices.json"
+link_config_filename = "config/link_config.json"
 
 
-payload_generated_filename="../data/random_payloads.json"
-
-
-# simulation config
-with open(simulation_config_filename, "r") as f:
-    simulation_config = json.load(f)
-
-PRINT_DEBUG=simulation_config["print_debug"]
+RANDOM_PAYLOAD=False
 
 SIMULATION_START = datetime(
-    simulation_config["simulation_start"]["year"],
-    simulation_config["simulation_start"]["month"],
-    simulation_config["simulation_start"]["day"],
-    simulation_config["simulation_start"]["hour"],
-    simulation_config["simulation_start"]["minute"],
+    2026, 6, 20,
+    3, 20, 0,
     tzinfo=timezone.utc
 )
+print(SIMULATION_START)
 
 SIMULATION_END = datetime(
-    simulation_config["simulation_end"]["year"],
-    simulation_config["simulation_end"]["month"],
-    simulation_config["simulation_end"]["day"],
-    simulation_config["simulation_end"]["hour"],
-    simulation_config["simulation_end"]["minute"],
+    2026, 6, 22,
+    4, 0, 0,
     tzinfo=timezone.utc
 )
 
 START_TS = SIMULATION_START.timestamp()
 END_TS = SIMULATION_END.timestamp()
 
-# doppler config
-with open(doppler_config_filename, "r") as f:
-    doppler_config = json.load(f) 
+MIN_ELEVATION = 5
 
-derivative_npoints=doppler_config["derivative_num_of_points"]
-derivative_step_sec=doppler_config["derivative_step_sec"]
-
-
-# generate Eds position
-generate_endpoint_positions(endpoint_config_filename,devices_filename)
-
-
-# satellite config
-with open(satellite_config_filename, "r") as f:
-    satellite_config = json.load(f) 
-MIN_ELEVATION = satellite_config["min_elevation_angle"]
+"""
+SATELLITES = [
+    "STARLINK-1017",
+    "STARLINK-1012",
+    "STARLINK-1042",
+    "STARLINK-1048",
+    "STARLINK-1068"
+]
+print(SATELLITES)
+"""
 
 
+def select_satellite_names():
 
-RANDOM_PAYLOAD=False
+    CONFIG_FILE = "config/sat_config.json"
+    TLE_FILE = "tle_active.txt"
 
-
-
-def select_satellite_names(satellite_config_filename, tle_filename):
-
-   
-
-    with open(satellite_config_filename, "r") as f:
+    with open(CONFIG_FILE, "r") as f:
         config = json.load(f)
     num_sats = config["num_sats"]
-    with open(tle_filename, "r") as f:
+    with open(TLE_FILE, "r") as f:
         lines = f.readlines()
     satellite_names = []
 
@@ -127,14 +98,14 @@ def select_satellite_names(satellite_config_filename, tle_filename):
     if len(satellite_names) < num_sats:
         raise ValueError(
             f"Requested {num_sats} Starlinks, "
-            f"but only {len(satellite_names)} were found in {tle_filename}."
+            f"but only {len(satellite_names)} were found in {TLE_FILE}."
         )            
     
     return satellite_names
 
 
 
-SATELLITES=select_satellite_names(satellite_config_filename, tle_filename)
+SATELLITES=select_satellite_names()
 
 # end additional code to store satellites list
 
@@ -268,8 +239,8 @@ def print_collision_summary(
     )
 
 ## add file to config link variables 
-def load_link_config(link_margin_config_filename):
-    with open(link_margin_config_filename, "r") as f:
+def load_link_config(link_config_filename):
+    with open(link_config_filename, "r") as f:
         link_config = json.load(f)
 
     return link_config
@@ -278,9 +249,7 @@ def apply_doppler_and_visibility(
     network,
     non_colliding,
     ts,
-    min_elevation,
-    derivative_npoints, 
-    derivative_step_sec
+    min_elevation
 ):
 
     print("\n============================================================")
@@ -311,7 +280,7 @@ def apply_doppler_and_visibility(
 
     link_margin_failed_count=0
 
-    link_config = load_link_config(link_margin_config_filename)
+    link_config = load_link_config(link_config_filename)
 
     ## 
 
@@ -397,11 +366,8 @@ def apply_doppler_and_visibility(
                             sat_name,
                             lora_cfg,
                             ed_pos,
-                            tx_time,
-                            derivative_npoints, 
-                            derivative_step_sec
+                            tx_time
                     )
-
                     
                     ####################################################
                     # PASSED
@@ -754,10 +720,10 @@ def print_final_summary(
 
     num_sats=len(SATELLITES)
     
-    with open(devices_filename, "r") as f:
+    with open("config/devices.json", "r") as f:
         devs = json.load(f)
         num_eds = len(devs)
-        
+    
     with open(data_filename, "a", newline="") as csv_file:
         writer = csv.writer(csv_file)
 
@@ -871,7 +837,7 @@ print("\n--- Defining Devices ---")
 
 load_devices_from_json(
     network,
-    devices_filename
+    "config/devices.json"
 )
 
 print("--- > Devices added to the network ---")
@@ -953,12 +919,9 @@ print(
     "--- > Loading LoRa configurations ---"
 )
 
+with open("config/config.json", "r") as f:
 
-
-
-with open(lora_config_filename, "r") as f:
-
-    lora_config = json.load(f)
+    lora_data = json.load(f)
 
 lora_cfgs = [
     LoRaCFG(
@@ -966,24 +929,15 @@ lora_cfgs = [
         cfg["bw"],
         cfg["frequency"]
     )
-    for cfg in lora_config
+    for cfg in lora_data
 ]
 
-for cfg in lora_config:
+for cfg in lora_data:
     ldro = cfg["ldro"]
     pkt_len = cfg["pkt_len"]
+    tx_power = cfg["tx_power"]
+    pkt_per_endpoint=cfg["pkt_per_endpoint"]
     data_filename=cfg["results_file"]
-
-with open(endpoint_config_filename, "r") as f:
-
-    endpoint_config = json.load(f)
-pkt_per_endpoint=endpoint_config["pkt_per_endpoint"]
-
-with open(link_margin_config_filename, "r") as f:
-
-    link_margin_config = json.load(f)
-tx_power_dbm=link_margin_config["iot_node"]["pt_dbm"]
-tx_power=10 ** ((tx_power_dbm - 30) / 10)
 
 
 print("\n--- > Generating random payloads ---")
@@ -992,7 +946,7 @@ payloads = generate_payloads(
     pkt_len,
     pkt_len,
     #51,
-    save_to=payload_generated_filename
+    save_to="config/random_payloads.json"
 )
 
 
@@ -1033,7 +987,7 @@ new_dev = Device(
         lat=49.620,
         lon=6.140
     ),
-    network=network'derivative_npoints' and 'derivative_step_sec'
+    network=network
 )
 
 network.devices.add_device(new_dev)
@@ -1070,9 +1024,6 @@ generated_packets = len(
     network.transmissions
 )
 
-
-
-
 print_collision_summary(
     generated_packets,
     collided,
@@ -1086,10 +1037,9 @@ print_collision_summary(
 stats = apply_doppler_and_visibility(
     network,
     non_colliding,
+
     ts,
-    MIN_ELEVATION,
-    derivative_npoints, 
-    derivative_step_sec
+    MIN_ELEVATION
 )
 
 ############################################################
