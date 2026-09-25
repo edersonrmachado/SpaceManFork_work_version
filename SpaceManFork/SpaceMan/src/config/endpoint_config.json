@@ -10,7 +10,7 @@
     },
     
     "number_of_eds":20,
-    "pkt_per_endpoint": 100,
-    "transmission_policy":"random"  
+    "pkt_per_endpoint": 55,
+    "policy_tx":"random_secure"  
     
 }

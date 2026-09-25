@@ -16,6 +16,7 @@ class LoRaCFG:
     sf: int
     bw: int
     frequency: float
+    ldro: int
 
 
 @dataclass

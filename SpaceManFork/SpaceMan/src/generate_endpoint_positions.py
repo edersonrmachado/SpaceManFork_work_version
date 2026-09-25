@@ -74,8 +74,8 @@ def generate_endpoint_positions(endpoint_config_filename, output_filename):
     with open(output_filename, "w") as f:
         json.dump(devices, f, indent=4)
 
+    # print summary
     if PRINT_MSG:
-        # print summary
         print("ED positions generated successfully")
         print("###################################")
         print(f"Output file: {output_filename}")

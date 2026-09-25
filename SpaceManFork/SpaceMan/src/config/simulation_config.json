@@ -3,17 +3,17 @@
     
     "simulation_start": {
         "year":2026,
-        "day": 21,
-        "month": 6,
-        "hour": 3,
-        "minute": 20,
+        "day": 8,
+        "month": 10,
+        "hour": 0,
+        "minute": 0,
         "second": 0
     },
     "simulation_end": {
         "year":2026,
-        "day": 22,
-        "month": 6,
-        "hour": 4,
+        "day": 10,
+        "month": 10,
+        "hour": 0,
         "minute": 0,
         "second": 0
     }

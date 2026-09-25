@@ -28,24 +28,33 @@ def calculate_lora_toa(
     preamble=8,
     crc=1,
     ih=0,
-    de=None
+    de=2
 ):
 
     bw_hz = bw * 1000
 
-    ########################################
-    # Low Data Rate Optimization
-    ########################################
-
-    if de is None:
-        de = 1 if (sf >= 11 and bw == 125) else 0
-
+    
     ########################################
     # Symbol duration
     ########################################
 
     t_sym = (2 ** sf) / bw_hz
 
+    ########################################
+    # Low Data Rate Optimization
+    ########################################
+    
+    if de is 2:
+        #de = 1 if (sf >= 11 and bw == 125) else 0
+       
+        if t_sym >= 0.016384:
+            de = 1
+        else:
+            de = 0    
+
+    
+    
+    
     ########################################
     # Preamble duration
     ########################################
@@ -171,6 +180,7 @@ def random_transmissions(
     network,
     payloads,
     lora_cfgs,
+    policy_tx,
     t_start=0,
     t_end=1000,
     n_packets=1,
@@ -179,50 +189,70 @@ def random_transmissions(
 
     rng = random.Random(seed)
     
+   
+    
     for device in network.devices.all_devices():
-
-        times = sorted(
-            #round(random.uniform(t_start, t_end), 3)
-            round(rng.uniform(t_start, t_end), 3)
-            for _ in range(n_packets)
-        )
-
-        valid_transmissions = []
-
-        for t in times:
-
-            pkt_payload = random.choice(payloads)
-
-            cfg = random.choice(lora_cfgs)
-
-            toa = calculate_lora_toa(
-                len(pkt_payload),
-                cfg.sf,
-                cfg.bw
-            )
-
-            if not valid_transmissions:
-
-                valid_transmissions.append(
-                    (t, toa, pkt_payload, cfg)
+        #print(f"policy: {policy_tx}")
+        
+        match policy_tx:  
+            case "random_initial":
+                times = sorted(
+                    #round(random.uniform(t_start, t_end), 3)
+                    round(rng.uniform(t_start, t_end), 3)
+                    for _ in range(n_packets)
                 )
 
-            else:
+                valid_transmissions = []
 
-                last_t, last_toa, _, _ = (
-                    valid_transmissions[-1]
-                )
+                for t in times:
 
-                ########################################
-                # Avoid self-overlap
-                ########################################
+                    pkt_payload = random.choice(payloads)
 
-                if t >= last_t + last_toa:
-
-                    valid_transmissions.append(
-                        (t, toa, pkt_payload, cfg)
+                    cfg = random.choice(lora_cfgs)
+                
+                    toa = calculate_lora_toa(
+                        len(pkt_payload),
+                        cfg.sf,
+                        cfg.bw,
+                        de=cfg.ldro
                     )
 
+                    if not valid_transmissions:
+
+                        valid_transmissions.append(
+                            (t, toa, pkt_payload, cfg)
+                        )
+
+                    else:
+
+                        last_t, last_toa, _, _ = (
+                            valid_transmissions[-1]
+                        )
+
+                        ########################################
+                        # Avoid self-overlap
+                        ########################################
+
+                        if t >= last_t + last_toa:
+
+                            valid_transmissions.append(
+                                (t, toa, pkt_payload, cfg)
+                            )
+            case "random_secure":
+                valid_transmissions = []
+                cfg = random.choice(lora_cfgs) # just one config for each simulation
+                pkt_payload = random.choice(payloads)
+                toa = calculate_lora_toa(len(pkt_payload), cfg.sf, cfg.bw,de=cfg.ldro)
+                times = generate_random_secure(t_start, t_end, n_packets, toa)
+               
+                for t in times:
+                    valid_transmissions.append((t, toa, pkt_payload, cfg))
+                       
+            case _:
+                raise ValueError("Transmission policy doesn't match.")
+            
+        
+        t
         ########################################
         # Create packets
         ########################################
@@ -238,6 +268,27 @@ def random_transmissions(
                 pkt,
                 cfg
             )
+
+###########################
+## ADDED: generate random number keeping the number of requested transmission 
+###########################
+def generate_random_secure(t_start, t_end, number_of_points, min_distance):
+    if t_end - t_start < (number_of_points - 1) * min_distance:
+        raise ValueError("There is not enough space to generate the tx time values.")
+
+    values = []
+
+    # Remaining space after reserving the minimum distances
+    remaining_space = ((t_end - t_start)- (number_of_points - 1) * min_distance)
+
+    # Generate random points
+    random_points = sorted(random.uniform(0, remaining_space)
+        for _ in range(number_of_points))
+
+    for i, point in enumerate(random_points):
+        values.append(round(t_start + point + i * min_distance,3))
+
+    return values
 
 
 ########################################
@@ -314,7 +365,8 @@ def check_collisions(network):
         toa_i = calculate_lora_toa(
             len(pkt_i.payload),
             cfg_i.sf,
-            cfg_i.bw
+            cfg_i.bw,
+            de=cfg_i.ldro
         )
 
         end_i = start_i + toa_i
@@ -342,7 +394,8 @@ def check_collisions(network):
             toa_j = calculate_lora_toa(
                 len(pkt_j.payload),
                 cfg_j.sf,
-                cfg_j.bw
+                cfg_j.bw,
+                de=cfg_j.ldro
             )
 
             end_j = start_j + toa_j
