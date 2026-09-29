@@ -20,9 +20,9 @@ class LoraConfig:
     sf: int
     bw: float
     fc: float
-    payload_len: int
-    cr: Optional[int] = 1
+    payload_len: int 
+    cr: Optional[int] = 1 # default 4/5
     crc: Optional[int] = 2
-    ih: Optional[bool] = False
+    ih: Optional[bool] = False # default explicit
     ldro: Optional[int] = 0 # 0=OFF 1=ON 2=AUTO
     preamble_len: Optional[int] = 8

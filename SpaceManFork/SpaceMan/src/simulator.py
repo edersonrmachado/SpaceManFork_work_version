@@ -36,7 +36,7 @@ from LISTutils import (
 # SIMULATION CONFIGURATION
 ############################################################
 
-start = time.perf_counter()
+simulation_start = time.perf_counter()
 
 simulation_config_filename="config/simulation_config.json"
 satellite_config_filename="config/satellite_config.json"
@@ -49,8 +49,6 @@ results_config_filename="config/results_config.json"
 tle_filename = "tle_active.txt"
 devices_filename="config/endpoint_positions/devices.json"
 payload_generated_filename="../data/random_payloads.json"
-
-#print(os.getcwd())
 
 
 # simulation config
@@ -78,7 +76,10 @@ SIMULATION_END = datetime(
 )
 
 START_TS = SIMULATION_START.timestamp()
+
 END_TS = SIMULATION_END.timestamp()
+
+evaluation_time = END_TS-START_TS
 
 # doppler config
 with open(doppler_config_filename, "r") as f:
@@ -91,7 +92,6 @@ derivative_step_sec=doppler_config["derivative_step_sec"]
 with open(satellite_config_filename, "r") as f:
     satellite_config = json.load(f) 
 MIN_ELEVATION = satellite_config["min_elevation_angle"]
-
 
 # generate Eds position
 generate_endpoint_positions(endpoint_config_filename,devices_filename)
@@ -131,8 +131,6 @@ def select_satellite_names(satellite_config_filename, tle_filename):
 
 
 SATELLITES=select_satellite_names(satellite_config_filename, tle_filename)
-
-#print(SATELLITES)
 
 ############################################################
 # REPORTING HELPERS
@@ -285,16 +283,21 @@ def apply_doppler_and_visibility(
     ts,
     min_elevation,
     derivative_npoints, 
-    derivative_step_sec
+    derivative_step_sec,
+    evaluation_time
 ):
 
     print("\n============================================================")
-    print("             VISIBILITY + DOPPLER ANALYSIS")
+    print("             VISIBILITY + LINK MARGIN + DOPPLER ANALYSIS      ")
     print("============================================================")
+
+    # visibility registers 
 
     visible_count = 0
 
     non_visible_count = 0
+
+    # doppler registers 
 
     doppler_failed = 0
 
@@ -310,7 +313,7 @@ def apply_doppler_and_visibility(
     
     doppler_exception_count=0
 
-    ## add link margin registers
+    ## link margin registers
 
     link_margin_ok_count=0
 
@@ -318,17 +321,15 @@ def apply_doppler_and_visibility(
 
     link_config = load_link_config(link_margin_config_filename)
 
-    repeated_link_margin_tx_count=0
+    repeated_link_margin_tx_count = 0
 
-    dcont=0
-    pkt_tx_anterior=0
+    pkt_tx_anterior = 0
+
+
     
     for dev, pkt, cfg in non_colliding:
 
         tx_start = pkt.txTime
-        #if tx_start_ant==tx_start:
-        #    print(tx_start)
-        #tx_start_ant=tx_start
         
         toa = calculate_lora_toa(
             len(pkt.payload),
@@ -336,13 +337,12 @@ def apply_doppler_and_visibility(
             cfg.bw,
             de=cfg.ldro
         )
-
+        
         tx_end = tx_start + toa
 
         visible_satellites = []
 
         packet_received = False
-
 
         for sat in network.satellites.values():
 
@@ -396,10 +396,9 @@ def apply_doppler_and_visibility(
                     link_config
                 )
 
-
+                #  count link pass transmission if it was not count before    
                 if link_pass == 0:
-                    # so conta se ainda nao contou zin
-                    if tx_time!=pkt_tx_anterior:
+                    if tx_time != pkt_tx_anterior:
                         link_margin_failed_count += 1
                         pkt_tx_anterior=tx_time
                     continue
@@ -408,15 +407,11 @@ def apply_doppler_and_visibility(
                 
                 if tx_time==pkt_tx_anterior:
                     repeated_link_margin_tx_count+=1
-                    #print("tx_pkt_time equal")
-
-                #pkt_tx_anterior=tx_time    
 
                 try:
                     
                     ## add ds_error dr_error to specify doppler error type    
-                    dcont+=1
-                    #print(f"num={dcont} sat:{sat_name} tx{tx_time}")
+                    
                     status, max_payload, ds_error,dr_error = checkComm(
                             sat_name,
                             lora_cfg,
@@ -510,7 +505,7 @@ def apply_doppler_and_visibility(
     # Return statistics
     ############################################################
 
-    #print(f"Total checkComm calls: {visible_packet_count}")
+    
     
     return {
         "visible_count": visible_count,
@@ -636,11 +631,9 @@ def print_final_summary(
     print("------------------------------------------------------------")
 
     print(
-        #f"Generated Packets        : "
         f"Generated transmissions  : "
         f"{generated_packets}"
     )
-
     
     collision_rate = (
         len(collided)
@@ -665,9 +658,7 @@ def print_final_summary(
         generated_packets
         ) * 100 if generated_packets else 0
 
-    #    len(non_colliding)
-    #) * 100 if len(non_colliding) else 0
-    
+
     print(
         f"Non Visible transmission : "
         f"{stats['non_visible_count']} "
@@ -681,18 +672,6 @@ def print_final_summary(
         f"({visibility_rate:.2f}%)" 
     )
     
-    #print(
-    #    f"Vis. packets             : "
-    #    f"{stats['visible_packet_count']} "
-    #)
-    
-    link_margin_pass_rate = (
-        stats["link_margin_ok_count"]
-        /
-        stats["visible_packet_count"]
-    ) * 100 if stats["visible_packet_count"] else 0
-
-
     link_margin_tx_pass=stats["link_margin_ok_count"]-stats["repeated_link_margin_tx_pass"]
     
     link_margin_tx_pass_rate=(
@@ -700,9 +679,7 @@ def print_final_summary(
         /
          generated_packets
         ) * 100 if generated_packets else 0
-    #    stats["visible_count"]
-    #) * 100 if stats["visible_count"] else 0
-
+    
     print(
         f"Link margin tx passed    : "
         f"{link_margin_tx_pass} "
@@ -714,47 +691,30 @@ def print_final_summary(
         /
          generated_packets
         ) * 100 if generated_packets else 0
-    #    stats["visible_count"]
-    #) * 100 if stats["visible_count"] else 0
-
+    
     print(
         f"Link margin tx failed    : "
         f"{stats["link_margin_failed_count"]} "
         f"({link_margin_tx_failed_rate:.2f}%)"
     )
-
-    #print(
-    #    f"Link margin pkts passed  : "
-    #    f"{stats['link_margin_ok_count']} "
-    #    f"({link_margin_pass_rate:.2f}%)"
-    #)
-
-
     
     doppler_fail_rate = (
         stats["doppler_failed"]
         /
          generated_packets
         ) * 100 if generated_packets else 0
-    #    stats["visible_packet_count"]
-    #) * 100 if stats["visible_packet_count"] else 0
-
+    
     doppler_static_fail_rate = (
         stats["doppler_static_failed_count"]
         /
          generated_packets
         ) * 100 if generated_packets else 0
-    #    stats["visible_packet_count"]
-    #) * 100 if stats["visible_packet_count"] else 0
     
     doppler_rate_fail_rate = (
         stats["doppler_rate_failed_count"]
         /
          generated_packets
         ) * 100 if generated_packets else 0
-    #    stats["visible_packet_count"]
-    #) * 100 if stats["visible_packet_count"] else 0
-
     
     print(
         f"Doppler Failed           : "
@@ -779,16 +739,13 @@ def print_final_summary(
         /
          generated_packets
         ) * 100 if generated_packets else 0
-    #    stats["visible_packet_count"]
-    #) * 100 if stats["visible_packet_count"] else 0
-
+   
     print(
         f"Doppler exception        : "
         f"{stats['doppler_exception_count']} "
         f"({doppler_exception_rate:.2f}%)"
     )
-    
-    
+     
     final_pdr = (
         stats["successfully_received"]
         /
@@ -800,44 +757,37 @@ def print_final_summary(
         f"{stats['successfully_received']} "
         f"({final_pdr:.2f}%)"
     )
-    
         
-    if (stats['successfully_received']-(stats['visible_packet_count']-stats['visible_count']))>0:
-        successfully_tx_received=stats['successfully_received']-(stats['visible_packet_count']-stats['visible_count'])
-    else:
-        successfully_tx_received=stats['successfully_received']
-            
+    # evaluation statistics 
+
+    successfully_tx_received = stats['successfully_received']
+   
+    pkt_energy=stats['toa'] * tx_power
     
-    final_pdr_transmissions = (
-        successfully_tx_received
-        /
-        generated_packets
-    ) * 100 if generated_packets else 0
-
-
-    #print(
-    #    f"Successfully transmiss.  : "
-    #    f"{successfully_tx_received} "
-    #    f"({final_pdr_transmissions:.2f}%)"
-    #)
+    total_energy=stats['toa'] * tx_power*generated_packets
     
-    pkt_energy=stats['toa']*tx_power
-    total_energy=stats['toa']*tx_power*generated_packets
-    successfully_energy_transm=successfully_tx_received*pkt_energy
-    failed_energy_collided=len(collided)*pkt_energy
-    failed_energy_visibility=stats['non_visible_count']*pkt_energy
-    failed_energy_doppler=stats['doppler_failed']*pkt_energy
-    link_margin_energy_pass=stats['link_margin_ok_count']*pkt_energy
-    failed_energy_link_margin=stats['link_margin_failed_count']*pkt_energy
-    bytes_per_joule=(pkt_len*successfully_tx_received)/total_energy if total_energy>0 else 0
-
-
+    successfully_energy_transm = successfully_tx_received * pkt_energy
+    
+    failed_energy_collided = len(collided) * pkt_energy
+    
+    failed_energy_visibility = stats['non_visible_count'] * pkt_energy
+    
+    failed_energy_doppler = stats['doppler_failed'] * pkt_energy
+    
+    link_margin_energy_pass = stats['link_margin_ok_count']*pkt_energy
+    
+    failed_energy_link_margin = stats['link_margin_failed_count']*pkt_energy
+    
+    bytes_per_joule = (pkt_len*successfully_tx_received)/total_energy if total_energy>0 else 0
 
     num_sats=len(SATELLITES)
     
     with open(devices_filename, "r") as f:
         devs = json.load(f)
         num_eds = len(devs)
+
+    duty_cycle=stats['toa']*(generated_packets/num_eds)*100/evaluation_time
+     
         
     with open(data_filename, "a", newline="") as csv_file:
         writer = csv.writer(csv_file)
@@ -851,7 +801,7 @@ def print_final_summary(
                 "dr_error","doppler_except_count","succes_rec_pkt","succes_rec_tx",
                 "final_pdr","succes_energy_trans","failed_energy_col","failed_energy_vis",
                 "failed_energy_dop","num_sats","num_devs","link_margin_energy_pass",
-                "failed_energy_link_margin","bytes_per_joule"
+                "failed_energy_link_margin","bytes_per_joule","duty_cycle"
             ])
         
         writer.writerow([f"{lora_cfgs[0].sf}", 
@@ -881,7 +831,8 @@ def print_final_summary(
                          f"{num_eds}",
                          f"{link_margin_energy_pass:.6f}",
                          f"{failed_energy_link_margin:.6f}",
-                         f"{bytes_per_joule:.2f}"
+                         f"{bytes_per_joule:.2f}",
+                         f"{duty_cycle:.3f}"
                          ])
        
 def print_gateway_statistics(network):
@@ -1035,8 +986,6 @@ print(
 )
 
 
-
-
 with open(lora_config_filename, "r") as f:
 
     lora_config = json.load(f)
@@ -1056,7 +1005,6 @@ for cfg in lora_config:
     pkt_len = cfg["pkt_len"]
     
     
-    #data_filename=cfg["results_file"]
 
 with open(results_config_filename, "r") as f:
     results_config = json.load(f)
@@ -1106,41 +1054,6 @@ random_transmissions(
 )
 
 ############################################################
-# MANUAL TRANSMISSIONS
-############################################################
-'''
-print(
-    "--- > Planning manual transmissions (To use for Scheduling Techniques)---"
-)
-
-cfg1 = LoRaCFG(
-    sf=8,
-    bw=125,
-    frequency=433.1
-)
-
-new_dev = Device(
-    "e9999",
-    Position(
-        lat=49.620,
-        lon=6.140
-    ),
-    network=network'derivative_npoints' and 'derivative_step_sec'
-)
-
-network.devices.add_device(new_dev)
-
-network.devices.get_device(
-    "e9999"
-).transmit(
-    Packet(
-        b"Hello",
-        START_TS + 120
-    ),
-    cfg1
-)
-'''
-############################################################
 # PHY SUMMARY
 ############################################################
 
@@ -1181,7 +1094,8 @@ stats = apply_doppler_and_visibility(
     ts,
     MIN_ELEVATION,
     derivative_npoints, 
-    derivative_step_sec
+    derivative_step_sec,
+    evaluation_time
 )
 
 ############################################################
@@ -1204,6 +1118,6 @@ print("                 END OF SIMULATION")
 print("============================================================")
 
 
-end = time.perf_counter()
-
-print(end - start)
+simulation_end = time.perf_counter()
+simulation_time=simulation_end - simulation_start
+print(f"simulation time: {simulation_time:.2f} s")
