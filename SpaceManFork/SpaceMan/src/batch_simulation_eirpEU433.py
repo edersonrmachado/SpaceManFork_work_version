@@ -104,7 +104,7 @@ for eirp_max in range(12, 31):
 
         # Run simulation
         
-        #subprocess.run(["python", "simulator.py"], check=True)
+        subprocess.run(["python", "simulator.py"], check=True)
 simulation_batch_end = time.perf_counter()
 simulation_batch_time=simulation_batch_end - simulation_batch_start
 

@@ -24,8 +24,16 @@ cd ${SLURM_ARRAY_TASK_ID}
 # clone the repository
 git clone https://github.com/edersonrmachado/SpaceManFork_work_version.git
 
+
+
 # go to the src directory
-cd SpaceManFork_work_version/SpaceManFork/SpaceMan/src
+cd SpaceManFork_work_version/SpaceManFork/SpaceMan/
+
+python3 -m venv venv
+source venv/bin/activate
+pip install -r requirements.txt
+cd src
+
 
 # run python script
 python "$SCRIPT"
