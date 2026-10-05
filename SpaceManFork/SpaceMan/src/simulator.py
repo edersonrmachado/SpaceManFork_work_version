@@ -1,5 +1,7 @@
 # simulator.py
 
+from filelock import FileLock
+
 from doppler_libsat import *
 from doppler_classes import *
 from doppler_utils import *
@@ -795,90 +797,94 @@ def print_final_summary(
             link_config = json.load(f)  
     eirp_dbm = link_config["iot_node"]["pt_dbm"] - link_config["iot_node"]["lftx"] + link_config["iot_node"]["gt"]
     
-    # write results to csv file
-    with open(data_filename, "a", newline="") as csv_file:
+    lock_filename=data_filename + ".lock"
+    # using lock to avoid race conditions when writing to the CSV file
+    with FileLock(lock_filename):
+    
+        # write results to csv file
+        with open(data_filename, "a", newline="") as csv_file:
 
-        row = {
-            # simulation config
-            "sim_start":START_TS,
-            "sim_end":END_TS,
+            row = {
+                # simulation config
+                "sim_start":START_TS,
+                "sim_end":END_TS,
+                
+                # lora config
+                "sf": lora_cfgs[0].sf,
+                "bw": lora_cfgs[0].bw,
+                "ldro": ldro,
+                "freqMHz": lora_cfgs[0].frequency,
+                "pkt_len": len(payloads[0]),
+                "pkt_toa": round(stats["toa"],6),
+                            
+                # endpoint config
+                "central_point_lat": central_point_lat,
+                "central_point_lon": central_point_lon,
+                "num_of_eds": number_of_eds,
+                "pkt_per_endpoint": pkt_per_endpoint,
+                
+                # satellite config
+                "num_sats": num_sats,
+                "min_elevation_angle": min_elevation_angle,
+                
+                # link margin config
+                "tx_power": round(tx_power,3),
+                "tx_power_dbm": tx_power_dbm,
+                "eirp_dbm": eirp_dbm,
             
-            # lora config
-            "sf": lora_cfgs[0].sf,
-            "bw": lora_cfgs[0].bw,
-            "ldro": ldro,
-            "freqMHz": lora_cfgs[0].frequency,
-            "pkt_len": len(payloads[0]),
-            "pkt_toa": round(stats["toa"],6),
-                        
-            # endpoint config
-            "central_point_lat": central_point_lat,
-            "central_point_lon": central_point_lon,
-            "num_of_eds": number_of_eds,
-            "pkt_per_endpoint": pkt_per_endpoint,
-            
-            # satellite config
-            "num_sats": num_sats,
-            "min_elevation_angle": min_elevation_angle,
-            
-            # link margin config
-            "tx_power": round(tx_power,3),
-            "tx_power_dbm": tx_power_dbm,
-            "eirp_dbm": eirp_dbm,
-        
-            # tx results
-            "total_num_pkt": generated_packets,
-            "collided": len(collided),
-            "non_collided": len(non_colliding),
-            "visible": stats['visible_count'],
-            "non_visible": stats["non_visible_count"],
-            "link_margin_pass": link_margin_tx_pass, 
-            "link_margin_failed":stats["link_margin_failed_count"],   
-            "doppler_pass":successfully_tx_received,
-            "doppler_failed": stats["doppler_failed"],
-            "doppler_shift_failed": stats["doppler_static_failed_count"],
-            "doppler_rate_failed": stats["doppler_rate_failed_count"],
-            "doppler_except_count" :stats["doppler_exception_count"],
-            "non_received":non_received,
-            "success_tx": successfully_tx_received,
-            
-            # tx rates
-            "collided_rate": round(collision_rate, 2),
-            "non_collided_rate": round(collision_free_rate, 2),
-            "visibility_rate": round(visibility_rate, 2),
-            "non_visibility_rate": round(non_visibility_rate, 2),
-            "link_margin_pass_rate": round(link_margin_tx_pass_rate, 2),
-            "link_margin_failed_rate": round(link_margin_tx_failed_rate, 2),
-            "doppler_pass_rate": round(final_pdr, 2),
-            "doppler_failed_rate": round(doppler_fail_rate, 2),
-            "doppler_shift_failed_rate": round(doppler_static_fail_rate, 2),
-            "doppler_rate_failed_rate": round(doppler_rate_fail_rate, 2),
-            "doppler_except_count_rate": round(doppler_exception_rate, 2),
-            "non_received_rate": round(non_received_rate,2),
-            "final_pdr": round(final_pdr, 2),
-            
-            # energy budget
-            "pkt_energy": round(pkt_energy, 6),
-            "total_energy": round(total_energy, 6),
-            "failed_energy_col": round(failed_energy_collided, 6),
-            "failed_energy_vis": round(failed_energy_visibility, 6),
-            "failed_energy_dop": round(failed_energy_doppler, 6),
-            "failed_energy_link_margin": round(failed_energy_link_margin, 6),
-            "link_margin_energy_pass": round(link_margin_energy_pass, 6),
-            "succes_energy_trans": round(successfully_energy_transm, 6),
-            "bytes_per_joule": round(bytes_per_joule,3),
-            "duty_cycle":round(duty_cycle,3)
-        }
+                # tx results
+                "total_num_pkt": generated_packets,
+                "collided": len(collided),
+                "non_collided": len(non_colliding),
+                "visible": stats['visible_count'],
+                "non_visible": stats["non_visible_count"],
+                "link_margin_pass": link_margin_tx_pass, 
+                "link_margin_failed":stats["link_margin_failed_count"],   
+                "doppler_pass":successfully_tx_received,
+                "doppler_failed": stats["doppler_failed"],
+                "doppler_shift_failed": stats["doppler_static_failed_count"],
+                "doppler_rate_failed": stats["doppler_rate_failed_count"],
+                "doppler_except_count" :stats["doppler_exception_count"],
+                "non_received":non_received,
+                "success_tx": successfully_tx_received,
+                
+                # tx rates
+                "collided_rate": round(collision_rate, 2),
+                "non_collided_rate": round(collision_free_rate, 2),
+                "visibility_rate": round(visibility_rate, 2),
+                "non_visibility_rate": round(non_visibility_rate, 2),
+                "link_margin_pass_rate": round(link_margin_tx_pass_rate, 2),
+                "link_margin_failed_rate": round(link_margin_tx_failed_rate, 2),
+                "doppler_pass_rate": round(final_pdr, 2),
+                "doppler_failed_rate": round(doppler_fail_rate, 2),
+                "doppler_shift_failed_rate": round(doppler_static_fail_rate, 2),
+                "doppler_rate_failed_rate": round(doppler_rate_fail_rate, 2),
+                "doppler_except_count_rate": round(doppler_exception_rate, 2),
+                "non_received_rate": round(non_received_rate,2),
+                "final_pdr": round(final_pdr, 2),
+                
+                # energy budget
+                "pkt_energy": round(pkt_energy, 6),
+                "total_energy": round(total_energy, 6),
+                "failed_energy_col": round(failed_energy_collided, 6),
+                "failed_energy_vis": round(failed_energy_visibility, 6),
+                "failed_energy_dop": round(failed_energy_doppler, 6),
+                "failed_energy_link_margin": round(failed_energy_link_margin, 6),
+                "link_margin_energy_pass": round(link_margin_energy_pass, 6),
+                "succes_energy_trans": round(successfully_energy_transm, 6),
+                "bytes_per_joule": round(bytes_per_joule,3),
+                "duty_cycle":round(duty_cycle,3)
+            }
 
-        writer = csv.DictWriter(
-            csv_file,
-            fieldnames=row.keys()
-        )
+            writer = csv.DictWriter(
+                csv_file,
+                fieldnames=row.keys()
+            )
 
-        if csv_file.tell() == 0:
-            writer.writeheader()
+            if csv_file.tell() == 0:
+                writer.writeheader()
 
-        writer.writerow(row)
+            writer.writerow(row)
      
     
 def print_gateway_statistics(network):

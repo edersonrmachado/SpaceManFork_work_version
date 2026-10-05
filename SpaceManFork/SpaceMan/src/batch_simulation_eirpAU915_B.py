@@ -1,6 +1,7 @@
 import json
 import subprocess
 
+from filelock import FileLock
 
 import time
 
@@ -59,7 +60,7 @@ gt=link_config["iot_node"]["gt"]
 lftx=link_config["iot_node"]["lftx"]
     
 
-for eirp_max in range(12, 31):
+for eirp_max in range(18, 24):
 
     for dr, sf, bw, pkt_len, ldro, freq in configs:
         
@@ -113,8 +114,9 @@ seconds = simulation_batch_time
 minutes = simulation_batch_time / 60
 hours = simulation_batch_time / 3600
 
-with open(simulation_batch_time_filename, "w") as f:
-    f.write(f"{results_file}\n")
-    f.write(f"simulation time: {seconds:.2f} s\n")
-    f.write(f"simulation time: {minutes:.2f} min\n")
-    f.write(f"simulation time: {hours:.2f} h\n")
+with FileLock(simulation_batch_time_filename + ".lock"):
+    with open(simulation_batch_time_filename, "w") as f:
+        f.write(f"{results_file}\n")
+        f.write(f"simulation time: {seconds:.2f} s\n")
+        f.write(f"simulation time: {minutes:.2f} min\n")
+        f.write(f"simulation time: {hours:.2f} h\n")

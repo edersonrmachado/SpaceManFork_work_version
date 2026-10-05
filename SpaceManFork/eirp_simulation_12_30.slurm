@@ -1,7 +1,7 @@
 #!/bin/bash
 
 #SBATCH --job-name=simulation
-#SBATCH --array=1-4
+#SBATCH --array=1-12
 #SBATCH --cpus-per-task=4
 #SBATCH --mem=8G
 #SBATCH --time=04:00:00
@@ -9,7 +9,19 @@
 #SBATCH --error=logs/%A_%a.err
 
 # scripts to run
-PYTHON_SCRIPTS=("batch_simulation_eirpEU868.py" "batch_simulation_eirpCN470.py" "batch_simulation_eirpEU433.py" "batch_simulation_eirpAU915.py")
+PYTHON_SCRIPTS=(
+    "batch_simulation_eirpEU868_A.py" 
+    "batch_simulation_eirpEU868_B.py" 
+    "batch_simulation_eirpEU868_C.py" 
+    "batch_simulation_eirpCN470_A.py" 
+    "batch_simulation_eirpCN470_B.py" 
+    "batch_simulation_eirpCN470_C.py" 
+    "batch_simulation_eirpEU433_A.py" 
+    "batch_simulation_eirpEU433_B.py" 
+    "batch_simulation_eirpEU433_C.py" 
+    "batch_simulation_eirpAU915_A.py" 
+    "batch_simulation_eirpAU915_B.py" 
+    "batch_simulation_eirpAU915_C.py")
 
 # select script based on SLURM_ARRAY_TASK_ID
 SCRIPT=${PYTHON_SCRIPTS[$SLURM_ARRAY_TASK_ID-1]}

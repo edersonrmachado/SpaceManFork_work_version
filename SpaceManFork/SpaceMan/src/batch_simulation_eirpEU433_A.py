@@ -1,6 +1,7 @@
 import json
 import subprocess
 
+from filelock import FileLock
 
 import time
 
@@ -18,17 +19,16 @@ results_config_filename = "config/results_config.json"
 simulation_config_filename = "config/simulation_config.json"
 endpoint_config_filename = "config/endpoint_config.json"
 
-
-results_file="../data/eirp868_12_30_gt0_t.csv"
-simulation_batch_time_filename="../data/eirp868_simulation_time_t"
-# regional parameters for EU868
-freq = 868.3 # 
+results_file="../data/eirpEU433_12_30_gt0_t.csv"
+simulation_batch_time_filename="../data/eirpEU433_simulation_time_t"
+# regional parameters for EU433
+freq = 433.375 # 
 
 # location config 
-lat = 48.8566 # Paris (FRANCE)
-lon = 2.3522 
+lat = -3.5158  # lodja (CONGO)   
+lon = 23.5801
 
-#eirp_max= 16 # dBm
+#eirp_max = 12 # dBm
 geometry_seed = None
 
 # [dr, sf, bw, PHYPayload, ldro, tx_power_dbm]
@@ -59,7 +59,7 @@ gt=link_config["iot_node"]["gt"]
 lftx=link_config["iot_node"]["lftx"]
     
 
-for eirp_max in range(12, 31):
+for eirp_max in range(12, 18):
 
     for dr, sf, bw, pkt_len, ldro, freq in configs:
         
@@ -94,7 +94,7 @@ for eirp_max in range(12, 31):
         with open(link_margin_config_filename, "w") as f:
             json.dump(link_cfg, f, indent=4)
 
-        # Mesmo results file para todas as simulações
+        # Mesmo reseirpults file para todas as simulações
         with open(results_config_filename) as f:
             results_config = json.load(f)
 
@@ -113,8 +113,9 @@ seconds = simulation_batch_time
 minutes = simulation_batch_time / 60
 hours = simulation_batch_time / 3600
 
-with open(simulation_batch_time_filename, "w") as f:
-    f.write(f"{results_file}\n")
-    f.write(f"simulation time: {seconds:.2f} s\n")
-    f.write(f"simulation time: {minutes:.2f} min\n")
-    f.write(f"simulation time: {hours:.2f} h\n")
+with FileLock(simulation_batch_time_filename + ".lock"):
+    with open(simulation_batch_time_filename, "w") as f:
+        f.write(f"{results_file}\n")
+        f.write(f"simulation time: {seconds:.2f} s\n")
+        f.write(f"simulation time: {minutes:.2f} min\n")
+        f.write(f"simulation time: {hours:.2f} h\n")
