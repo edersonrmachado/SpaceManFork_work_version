@@ -3,7 +3,7 @@
         "sf": 7,
         "bw": 125,
         "ldro": 0,
-        "frequency": 868.3,
-        "pkt_len": 128
+        "frequency": 433.375,
+        "pkt_len": 245
     }
 ]

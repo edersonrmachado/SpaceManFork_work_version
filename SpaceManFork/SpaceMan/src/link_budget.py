@@ -15,7 +15,14 @@ import math
 
 BOLTZMANN_CONSTANT = 1.38e-23  # Boltzmann constant in J/K
 LIGHT_SPEED = 299792458.0
-PRINT_LINK_BUDGET = False # debug
+
+# simulation config
+simulation_config_filename="config/simulation_config.json"
+
+with open(simulation_config_filename, "r") as f:
+    simulation_config = json.load(f)
+
+PRINT_LINK_MARGIN_DEBUG=simulation_config["print_link_margin_debug"]
 
 
 def snr_min_db(sf):
@@ -129,7 +136,7 @@ def compute_link_margin(sat_id, lora_cfg, ed_pos, tx_time,link_config):
     dif=sensitivity_1-sensitivity_2 
     link_margin_2=pr-sensitivity_2    
 
-    if  PRINT_LINK_BUDGET:
+    if  PRINT_LINK_MARGIN_DEBUG:
 
         print("------------ EIRP IoT node ----------")
 

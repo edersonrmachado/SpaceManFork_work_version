@@ -11,6 +11,7 @@ import matplotlib.dates as mdates
 from pathlib import Path
 import os
 import datetime
+import json
 
 # constants [m], [m/s^2], [m/s] 
 EARTH_RADIUS = 6378137 
@@ -21,9 +22,14 @@ LIGHTSPEED = 299792458
 tle_directory="TLE/"
 tle_filename="tle_active.txt"
 
-# debug option
-PRINT_DEBUG_DOPPLER=False
+# simulation config
+simulation_config_filename="config/simulation_config.json"
 
+with open(simulation_config_filename, "r") as f:
+    simulation_config = json.load(f)
+
+PRINT_DOPPLER_DEBUG=simulation_config["print_doppler_debug"]
+COMPARE_DERIVATIVE_PRINT=False
 
 def loadSat(sat_name):
     """Return a satellite TLE object from its satellite name"""
@@ -78,12 +84,12 @@ def search_satellite_tle_locally(sat_name, tle_filename, output_dir="TLE"):
                 f.write(f"{line1}\n")
                 f.write(f"{line2}\n")
 
-            if PRINT_DEBUG_DOPPLER:
+            if PRINT_DOPPLER_DEBUG:
                 print(f"TLE saved: {output_file}")
 
             return True
 
-    if PRINT_DEBUG_DOPPLER:
+    if PRINT_DOPPLER_DEBUG:
         print(f"Satellite {sat_name} not found locally")
 
     return False
@@ -162,7 +168,7 @@ def checkComm(sat_id, lora_cfg, ed_pos, tx_time, derivative_npoints, derivative_
     # compute where the satellite is at time t
     topocentric = difference.at(t) 
 
-    if PRINT_DEBUG_DOPPLER:
+    if PRINT_DOPPLER_DEBUG:
         alt, az, distance = topocentric.altaz()                                        
 
     # time vector for derivative computation 
@@ -193,11 +199,12 @@ def checkComm(sat_id, lora_cfg, ed_pos, tx_time, derivative_npoints, derivative_
     # Doppler rater in Hz/s
     doppler_hz_sec_tx=calculate_derivative_npoints(doppler_hz_vec, derivative_step_sec, derivative_npoints)
 
-    if PRINT_DEBUG_DOPPLER:
-        print(f"Doppler rate central derivative ({derivative_npoints} points): {doppler_hz_sec_tx:.3f} Hz/s")
-        doppler_hz_sec_vec_gr=np.gradient(doppler_hz_vec,derivative_step_sec)
-        doppler_hz_sec_tx_gr=doppler_hz_sec_vec_gr[tx_index]
-        print(f"Doppler rate with  gradient func (2 points): {doppler_hz_sec_tx_gr:.3f} Hz/s")
+    if PRINT_DOPPLER_DEBUG:
+        if COMPARE_DERIVATIVE_PRINT:
+            print(f"Doppler rate central derivative ({derivative_npoints} points): {doppler_hz_sec_tx:.3f} Hz/s")
+            doppler_hz_sec_vec_gr=np.gradient(doppler_hz_vec,derivative_step_sec)
+            doppler_hz_sec_tx_gr=doppler_hz_sec_vec_gr[tx_index]
+            print(f"Doppler rate with  gradient func (2 points): {doppler_hz_sec_tx_gr:.3f} Hz/s")
                     
     # evaluates doppler shift limit at syncronization
     ds_pass=evaluates_static_doppler(doppler_hz_tx,lora_cfg.sf,lora_cfg.bw,lora_cfg.fc)
@@ -230,8 +237,14 @@ def checkComm(sat_id, lora_cfg, ed_pos, tx_time, derivative_npoints, derivative_
     else:
         status=True
 
-    if PRINT_DEBUG_DOPPLER:    
+    if PRINT_DOPPLER_DEBUG:    
         height_vec = wgs84.height_of(satellite.at(ts_vector)).m
-        print(f"Doppler shift: {doppler_hz_tx:.2f} Hz, rate: {doppler_hz_sec_tx:.2f} Hz/s, {pkt_symbols} sym, 1st sym error {first_symbol_error}, ds_error {ds_error}, dr_error {dr_error}")
-    
+        print(
+            f"Doppler shift: {doppler_hz_tx:>10.2f} Hz, "
+            f"rate: {doppler_hz_sec_tx:>8.2f} Hz/s, "
+            f"{pkt_symbols:>3} sym, "
+            f"1st sym error: {first_symbol_error:>5}, "
+            f"ds_error: {ds_error:>3}, "
+            f"dr_error: {dr_error:>3}"
+        )
     return status, max_pay_bytes, ds_error, dr_error 

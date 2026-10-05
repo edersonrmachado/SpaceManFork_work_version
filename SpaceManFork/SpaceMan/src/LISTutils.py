@@ -89,7 +89,7 @@ def calculate_lora_toa(
     ########################################
     # Total ToA
     ########################################
-
+    
     return t_preamble + t_payload
 
 
@@ -273,6 +273,10 @@ def random_transmissions(
 ## ADDED: generate random number keeping the number of requested transmission 
 ###########################
 def generate_random_secure(t_start, t_end, number_of_points, min_distance):
+    
+    # random seed always
+    random.seed(None)
+    
     if t_end - t_start < (number_of_points - 1) * min_distance:
         raise ValueError("There is not enough space to generate the tx time values.")
 

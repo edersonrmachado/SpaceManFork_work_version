@@ -1,8 +1,9 @@
 {
-    "print_debug":true,
-    
+    "print_simulation_debug": false,
+    "print_link_margin_debug": false,
+    "print_doppler_debug": false,
     "simulation_start": {
-        "year":2026,
+        "year": 2026,
         "day": 8,
         "month": 10,
         "hour": 0,
@@ -10,12 +11,11 @@
         "second": 0
     },
     "simulation_end": {
-        "year":2026,
+        "year": 2026,
         "day": 10,
         "month": 10,
         "hour": 0,
         "minute": 0,
         "second": 0
     }
- 
 }

@@ -5,6 +5,7 @@ PRINT_MSG=False
 
 
 def generate_endpoint_positions(endpoint_config_filename, output_filename):
+    """Generate endpoint positions based on config, store their position in output file"""
 
     # read ed config file
     with open(endpoint_config_filename, "r") as f:
@@ -21,6 +22,8 @@ def generate_endpoint_positions(endpoint_config_filename, output_filename):
     # random seed if none
     if SEED is not None:
         random.seed(SEED)
+    else:
+        random.seed(None)
 
     earth_radius_km = 6371.0
 

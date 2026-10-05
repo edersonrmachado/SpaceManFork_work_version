@@ -55,7 +55,7 @@ payload_generated_filename="../data/random_payloads.json"
 with open(simulation_config_filename, "r") as f:
     simulation_config = json.load(f)
 
-PRINT_DEBUG=simulation_config["print_debug"]
+PRINT_SIMULATION_DEBUG=simulation_config["print_simulation_debug"]
 
 SIMULATION_START = datetime(
     simulation_config["simulation_start"]["year"],
@@ -161,15 +161,15 @@ def print_network_entities(network):
 
     print("\n=== Pre-Loaded Devices ===")
 
+    if PRINT_SIMULATION_DEBUG:
+        for dev in network.devices.all_devices():
 
-    for dev in network.devices.all_devices():
+            print(
+                f"--- > {dev.devEui}: "
+                f"{dev.position}"
+            )
 
-        print(
-             f"--- > {dev.devEui}: "
-            f"{dev.position}"
-        )
-
-    print("\n=== Gateways ===")
+        print("\n=== Gateways ===")
 
     for gw_id, gw in network.gateways.items():
 
@@ -178,12 +178,12 @@ def print_network_entities(network):
             if gw.satellite
             else "None"
         )
-
-        print(
-            f"--- > {gw.gatewayId}: "
-            f"{gw.position}, "
-            f"linked to satellite {sat_name}"
-        )
+        if PRINT_SIMULATION_DEBUG:
+            print(
+                f"--- > {gw.gatewayId}: "
+                f"{gw.position}, "
+                f"linked to satellite {sat_name}"
+            )
 
     print("\n=== Satellites ===")
 
@@ -194,12 +194,12 @@ def print_network_entities(network):
             if sat.gateway
             else "None"
         )
-
-        print(
-            f"--- > {sat.id}, "
-            f"gateway: {gw_name}, "
-            f"position: {sat.position}"
-        )
+        if PRINT_SIMULATION_DEBUG:
+            print(
+                f"--- > {sat.id}, "
+                f"gateway: {gw_name}, "
+                f"position: {sat.position}"
+            )
 
 
 def print_phy_summary(network):
@@ -283,8 +283,7 @@ def apply_doppler_and_visibility(
     ts,
     min_elevation,
     derivative_npoints, 
-    derivative_step_sec,
-    evaluation_time
+    derivative_step_sec
 ):
 
     print("\n============================================================")
@@ -324,7 +323,6 @@ def apply_doppler_and_visibility(
     repeated_link_margin_tx_count = 0
 
     pkt_tx_anterior = 0
-
 
     
     for dev, pkt, cfg in non_colliding:
@@ -459,7 +457,7 @@ def apply_doppler_and_visibility(
                     ####################################################
 
                     else:
-                        # Doppler não passou e tempos diferentes
+                        # count doppler error only if pkt tx are different from anterior
                         if tx_time!=pkt_tx_anterior:
                             doppler_failed += 1
                             if ds_error==1 and dr_error==0:
@@ -533,6 +531,95 @@ def print_final_summary(
     lora_cfgs
 ):
 
+
+    # calculations
+    
+    collision_free_rate = (
+        len(non_colliding)
+        /
+        generated_packets
+    ) * 100 if generated_packets else 0
+    
+    visibility_rate = (
+        stats["visible_count"]
+        /
+        len(non_colliding)
+    ) * 100 if len(non_colliding) else 0
+    
+    doppler_rate = (
+        stats["successfully_received"]
+        /
+        stats["visible_count"]
+    ) * 100 if stats["visible_count"] else 0
+    
+    final_pdr = (
+        stats["successfully_received"]
+        /
+        generated_packets
+    ) * 100 if generated_packets else 0
+    
+    
+    # accounting tx instead pkts for link margin
+    link_margin_tx_pass = stats["link_margin_ok_count"]-stats["repeated_link_margin_tx_pass"]
+    
+    non_received = generated_packets-stats['successfully_received']
+    
+    non_received_rate = (
+            non_received
+            /
+            generated_packets
+        ) * 100 if generated_packets else 0
+    
+        
+    collision_rate = (
+        len(collided)
+        /
+        generated_packets
+    ) * 100 if generated_packets else 0
+
+    non_visibility_rate = (
+        stats["non_visible_count"]
+        /
+        generated_packets
+        ) * 100 if generated_packets else 0
+    
+    link_margin_tx_pass_rate=(
+        link_margin_tx_pass
+        /
+            generated_packets
+        ) * 100 if generated_packets else 0
+        
+    link_margin_tx_failed_rate=(
+        stats["link_margin_failed_count"]
+        /
+            generated_packets
+        ) * 100 if generated_packets else 0
+        
+    doppler_fail_rate = (
+        stats["doppler_failed"]
+        /
+            generated_packets
+        ) * 100 if generated_packets else 0
+        
+    doppler_static_fail_rate = (
+        stats["doppler_static_failed_count"]
+        /
+            generated_packets
+        ) * 100 if generated_packets else 0
+    
+    doppler_rate_fail_rate = (
+        stats["doppler_rate_failed_count"]
+        /
+            generated_packets
+        ) * 100 if generated_packets else 0
+    
+    doppler_exception_rate = (
+            stats["doppler_exception_count"]
+            /
+                generated_packets
+            ) * 100 if generated_packets else 0
+    
+    
     print("\n============================================================")
     print("                SIMULATION FINAL SUMMARY")
     print("============================================================")
@@ -568,203 +655,105 @@ def print_final_summary(
         f"LoRa Configurations  : "
         f"{len(lora_cfgs)}"
     )
-
-    print("\n------------------------------------------------------------")
-    print("[PACKET FLOW]")
-    print("------------------------------------------------------------")
-
-    print(
-        f"Generated Packets        : "
-        f"{generated_packets}"
-    )
-
-    collision_free_rate = (
-        len(non_colliding)
-        /
-        generated_packets
-    ) * 100 if generated_packets else 0
-
-    print(
-        f"Collision-Free           : "
-        f"{len(non_colliding)} "
-        f"({collision_free_rate:.2f}%)"
-    )
-
-    visibility_rate = (
-        stats["visible_count"]
-        /
-        len(non_colliding)
-    ) * 100 if len(non_colliding) else 0
-
-    print(
-        f"Visible                  : "
-        f"{stats['visible_count']} "
-        f"({visibility_rate:.2f}%)"
-    )
-
-    doppler_rate = (
-        stats["successfully_received"]
-        /
-        stats["visible_count"]
-    ) * 100 if stats["visible_count"] else 0
-
-    print(
-        f"Doppler Passed           : "
-        f"{stats['successfully_received']} "
-        f"({doppler_rate:.2f}%)"
-    )
-
-    final_pdr = (
-        stats["successfully_received"]
-        /
-        generated_packets
-    ) * 100 if generated_packets else 0
-
-    print(
-        f"Successfully Received    : "
-        f"{stats['successfully_received']} "
-        f"({final_pdr:.2f}%)"
-    )
-
-    print("\n------------------------------------------------------------")
-    print("[PACKET FLOW 2]")
-    print("------------------------------------------------------------")
-
-    print(
-        f"Generated transmissions  : "
-        f"{generated_packets}"
-    )
-    
-    collision_rate = (
-        len(collided)
-        /
-        generated_packets
-    ) * 100 if generated_packets else 0
-
-    print(
-        f"Collided transmissions   : "
-        f"{len(collided)} "
-        f"({collision_rate:.2f}%)"
-    )
-    print(
-        f"Collision-Free           : "
-        f"{len(non_colliding)} "
-        f"({collision_free_rate:.2f}%)"
-    )
-    
-    non_visibility_rate = (
-        stats["non_visible_count"]
-        /
-        generated_packets
-        ) * 100 if generated_packets else 0
-
-
-    print(
-        f"Non Visible transmission : "
-        f"{stats['non_visible_count']} "
-        f"({non_visibility_rate:.2f}%)"
-    )
-    
-    
-    print(
-        f"Visible transmission     : "
-        f"{stats['visible_count']} "
-        f"({visibility_rate:.2f}%)" 
-    )
-    
-    link_margin_tx_pass=stats["link_margin_ok_count"]-stats["repeated_link_margin_tx_pass"]
-    
-    link_margin_tx_pass_rate=(
-        link_margin_tx_pass
-        /
-         generated_packets
-        ) * 100 if generated_packets else 0
-    
-    print(
-        f"Link margin tx passed    : "
-        f"{link_margin_tx_pass} "
-        f"({link_margin_tx_pass_rate:.2f}%)"
-    )
-
-    link_margin_tx_failed_rate=(
-        stats["link_margin_failed_count"]
-        /
-         generated_packets
-        ) * 100 if generated_packets else 0
-    
-    print(
-        f"Link margin tx failed    : "
-        f"{stats["link_margin_failed_count"]} "
-        f"({link_margin_tx_failed_rate:.2f}%)"
-    )
-    
-    doppler_fail_rate = (
-        stats["doppler_failed"]
-        /
-         generated_packets
-        ) * 100 if generated_packets else 0
-    
-    doppler_static_fail_rate = (
-        stats["doppler_static_failed_count"]
-        /
-         generated_packets
-        ) * 100 if generated_packets else 0
-    
-    doppler_rate_fail_rate = (
-        stats["doppler_rate_failed_count"]
-        /
-         generated_packets
-        ) * 100 if generated_packets else 0
-    
-    print(
-        f"Doppler Failed           : "
-        f"{stats['doppler_failed']} "
-        f"({doppler_fail_rate:.2f}%)"
-    )
-
-    print(
-        f"Doppler static Failed    : "
-        f"{stats['doppler_static_failed_count']} "
-        f"({doppler_static_fail_rate:.2f}%)"
-    )
-
-    print(
-        f"Doppler rate Failed      : "
-        f"{stats['doppler_rate_failed_count']} "
-        f"({doppler_rate_fail_rate:.2f}%)"
-    )
-    
-    doppler_exception_rate = (
-        stats["doppler_exception_count"]
-        /
-         generated_packets
-        ) * 100 if generated_packets else 0
    
-    print(
-        f"Doppler exception        : "
-        f"{stats['doppler_exception_count']} "
-        f"({doppler_exception_rate:.2f}%)"
-    )
-     
-    final_pdr = (
-        stats["successfully_received"]
-        /
-        generated_packets
-    ) * 100 if generated_packets else 0
+    print("\n------------------------------------------------------------")
+    print(f"[PACKET FLOW]              :      num (% of tot.)")
+    print("------------------------------------------------------------")
 
     print(
-        f"Successfully txs         : "
-        f"{stats['successfully_received']} "
-        f"({final_pdr:.2f}%)"
+        f"Generated transmissions    : "
+        f"{generated_packets:>8} "
+        f"({100.00:>6.2f}%)"
     )
-        
-    # evaluation statistics 
+    print(
+        f"  Collided                 : "
+        f"{len(collided):>8} "
+        f"({collision_rate:>6.2f}%)"
+    )
+    print(
+        f"  Non Visible              : "
+        f"{stats['non_visible_count']:>8} "
+        f"({non_visibility_rate:>6.2f}%)"
+    )
+    print(
+        f"  Link margin failed       : "
+        f"{stats['link_margin_failed_count']:>8} "
+        f"({link_margin_tx_failed_rate:>6.2f}%)"
+    )
+    print(
+        f"  Doppler failed           : "
+        f"{stats['doppler_failed']:>8} "
+        f"({doppler_fail_rate:>6.2f}%)"
+    )
+    print(
+        f"  Successfully received    : "
+        f"{stats['successfully_received']:>8} "
+        f"({final_pdr:>6.2f}%)"
+    )
+
+    print()
+    print("------------------------------------------------------------")
+    print(f"[DOPPLER]                  :      num (% of tot.)")    
+    print("------------------------------------------------------------")
+
+    print(
+        f"  Doppler static failed    : "
+        f"{stats['doppler_static_failed_count']:>8} "
+        f"({doppler_static_fail_rate:>6.2f}%)"
+    )
+    print(
+        f"  Doppler rate failed      : "
+        f"{stats['doppler_rate_failed_count']:>8} "
+        f"({doppler_rate_fail_rate:>6.2f}%)"
+    )
+    print(
+        f"  Doppler code exception   : "
+        f"{stats['doppler_exception_count']:>8} "
+        f"({doppler_exception_rate:>6.2f}%)"
+    )
+
+    print("\n------------------------------------------------------------")
+    print(f"[PACKET FLOW AUX]          :      num (% of tot.)")
+    print("------------------------------------------------------------")
+
+    print(
+        f"Generated transmissions    : "
+        f"{generated_packets:>8} "
+        f"({100.00:>6.2f}%)"
+    )
+    print(
+        f"  Collision-Free           : "
+        f"{len(non_colliding):>8} "
+        f"({collision_free_rate:>6.2f}%)"
+    )
+    print(
+        f"  Visible                  : "
+        f"{stats['visible_count']:>8} "
+        f"({visibility_rate:>6.2f}%)"
+    )
+    print(
+        f"  Link margin passed       : "
+        f"{link_margin_tx_pass:>8} "
+        f"({link_margin_tx_pass_rate:>6.2f}%)"
+    )
+    print(
+        f"  Doppler passed           : "
+        f"{stats['successfully_received']:>8} "
+        f"({final_pdr:>6.2f}%)"
+    )
+    print(
+        f"  Non received             : "
+        f"{non_received:>8} "
+        f"({non_received_rate:>6.2f}%)"
+    )
+            
+    # evaluation statistics (energy in joules)
 
     successfully_tx_received = stats['successfully_received']
    
-    pkt_energy=stats['toa'] * tx_power
+    pkt_energy = stats['toa'] * tx_power 
     
-    total_energy=stats['toa'] * tx_power*generated_packets
+    total_energy = pkt_energy * generated_packets 
     
     successfully_energy_transm = successfully_tx_received * pkt_energy
     
@@ -774,67 +763,124 @@ def print_final_summary(
     
     failed_energy_doppler = stats['doppler_failed'] * pkt_energy
     
-    link_margin_energy_pass = stats['link_margin_ok_count']*pkt_energy
+    link_margin_energy_pass = link_margin_tx_pass * pkt_energy
     
     failed_energy_link_margin = stats['link_margin_failed_count']*pkt_energy
     
-    bytes_per_joule = (pkt_len*successfully_tx_received)/total_energy if total_energy>0 else 0
+    bytes_per_joule = (pkt_len * successfully_tx_received) / total_energy if total_energy > 0 else 0
 
     num_sats=len(SATELLITES)
     
-    with open(devices_filename, "r") as f:
-        devs = json.load(f)
-        num_eds = len(devs)
-
-    duty_cycle=stats['toa']*(generated_packets/num_eds)*100/evaluation_time
-     
+    # extract satellite config
+    with open(satellite_config_filename, "r") as f:
+        satellite_config = json.load(f)
+        num_sats=satellite_config["num_sats"]
+        if num_sats !=len(SATELLITES):
+            raise ValueError("Num sats diverge")
+        min_elevation_angle=satellite_config["min_elevation_angle"]
         
+    # extract endpoint config
+    with open(endpoint_config_filename, "r") as f:
+        endpoint_config = json.load(f)   
+        central_point_lat = endpoint_config['ed_geometry']['central_point']['lat']
+        central_point_lon = endpoint_config['ed_geometry']['central_point']['lon']
+        number_of_eds = endpoint_config['number_of_eds']
+        pkt_per_endpoint = endpoint_config['pkt_per_endpoint']
+            
+    # duty cycle calculation
+    duty_cycle=stats['toa']*(generated_packets/number_of_eds)*100/evaluation_time
+    
+    # eirp calculation
+    with open(link_margin_config_filename, "r") as f:
+            link_config = json.load(f)  
+    eirp_dbm = link_config["iot_node"]["pt_dbm"] - link_config["iot_node"]["lftx"] + link_config["iot_node"]["gt"]
+    
+    # write results to csv file
     with open(data_filename, "a", newline="") as csv_file:
-        writer = csv.writer(csv_file)
 
-       
-        if csv_file.tell() == 0:
-            writer.writerow([
-                "sf","bw","ldro","freqMHz","pkt_len","pkt_toa",
-                "tx_power","pkt_energy","total_pkt","total_energy",
-                "collided","non_visible","doppler_error","ds_error",
-                "dr_error","doppler_except_count","succes_rec_pkt","succes_rec_tx",
-                "final_pdr","succes_energy_trans","failed_energy_col","failed_energy_vis",
-                "failed_energy_dop","num_sats","num_devs","link_margin_energy_pass",
-                "failed_energy_link_margin","bytes_per_joule","duty_cycle"
-            ])
+        row = {
+            # simulation config
+            "sim_start":START_TS,
+            "sim_end":END_TS,
+            
+            # lora config
+            "sf": lora_cfgs[0].sf,
+            "bw": lora_cfgs[0].bw,
+            "ldro": ldro,
+            "freqMHz": lora_cfgs[0].frequency,
+            "pkt_len": len(payloads[0]),
+            "pkt_toa": round(stats["toa"],6),
+                        
+            # endpoint config
+            "central_point_lat": central_point_lat,
+            "central_point_lon": central_point_lon,
+            "num_of_eds": number_of_eds,
+            "pkt_per_endpoint": pkt_per_endpoint,
+            
+            # satellite config
+            "num_sats": num_sats,
+            "min_elevation_angle": min_elevation_angle,
+            
+            # link margin config
+            "tx_power": round(tx_power,3),
+            "tx_power_dbm": tx_power_dbm,
+            "eirp_dbm": eirp_dbm,
         
-        writer.writerow([f"{lora_cfgs[0].sf}", 
-                         f"{lora_cfgs[0].bw}",
-                         f"{ldro}", 
-                         f"{lora_cfgs[0].frequency}",
-                         f"{len(payloads[0])}",
-                         f"{stats['toa']:.6f}",
-                         f"{tx_power}", 
-                         f"{pkt_energy:.6f}",
-                         f"{generated_packets}",
-                         f"{total_energy:.6f}",
-                         f"{len(collided)}",
-                         f"{stats['non_visible_count']}",
-                         f"{stats['doppler_failed']}",
-                         f"{stats['doppler_static_failed_count']}",
-                         f"{stats['doppler_rate_failed_count']}",
-                         f"{stats['doppler_exception_count']}",
-                         f"{stats['successfully_received']}",
-                         f"{successfully_tx_received}",
-                         f"{final_pdr:.2f}",
-                         f"{successfully_energy_transm:.6f}",
-                         f"{failed_energy_collided:.6f}",
-                         f"{failed_energy_visibility:.6f}",
-                         f"{failed_energy_doppler:.6f}",
-                         f"{num_sats}",
-                         f"{num_eds}",
-                         f"{link_margin_energy_pass:.6f}",
-                         f"{failed_energy_link_margin:.6f}",
-                         f"{bytes_per_joule:.2f}",
-                         f"{duty_cycle:.3f}"
-                         ])
-       
+            # tx results
+            "total_num_pkt": generated_packets,
+            "collided": len(collided),
+            "non_collided": len(non_colliding),
+            "visible": stats['visible_count'],
+            "non_visible": stats["non_visible_count"],
+            "link_margin_pass": link_margin_tx_pass, 
+            "link_margin_failed":stats["link_margin_failed_count"],   
+            "doppler_pass":successfully_tx_received,
+            "doppler_failed": stats["doppler_failed"],
+            "doppler_shift_failed": stats["doppler_static_failed_count"],
+            "doppler_rate_failed": stats["doppler_rate_failed_count"],
+            "doppler_except_count" :stats["doppler_exception_count"],
+            "non_received":non_received,
+            "success_tx": successfully_tx_received,
+            
+            # tx rates
+            "collided_rate": round(collision_rate, 2),
+            "non_collided_rate": round(collision_free_rate, 2),
+            "visibility_rate": round(visibility_rate, 2),
+            "non_visibility_rate": round(non_visibility_rate, 2),
+            "link_margin_pass_rate": round(link_margin_tx_pass_rate, 2),
+            "link_margin_failed_rate": round(link_margin_tx_failed_rate, 2),
+            "doppler_pass_rate": round(final_pdr, 2),
+            "doppler_failed_rate": round(doppler_fail_rate, 2),
+            "doppler_shift_failed_rate": round(doppler_static_fail_rate, 2),
+            "doppler_rate_failed_rate": round(doppler_rate_fail_rate, 2),
+            "doppler_except_count_rate": round(doppler_exception_rate, 2),
+            "non_received_rate": round(non_received_rate,2),
+            "final_pdr": round(final_pdr, 2),
+            
+            # energy budget
+            "pkt_energy": round(pkt_energy, 6),
+            "total_energy": round(total_energy, 6),
+            "failed_energy_col": round(failed_energy_collided, 6),
+            "failed_energy_vis": round(failed_energy_visibility, 6),
+            "failed_energy_dop": round(failed_energy_doppler, 6),
+            "failed_energy_link_margin": round(failed_energy_link_margin, 6),
+            "link_margin_energy_pass": round(link_margin_energy_pass, 6),
+            "succes_energy_trans": round(successfully_energy_transm, 6),
+            "bytes_per_joule": round(bytes_per_joule,3),
+            "duty_cycle":round(duty_cycle,3)
+        }
+
+        writer = csv.DictWriter(
+            csv_file,
+            fieldnames=row.keys()
+        )
+
+        if csv_file.tell() == 0:
+            writer.writeheader()
+
+        writer.writerow(row)
+     
+    
 def print_gateway_statistics(network):
 
     print("\n------------------------------------------------------------")
@@ -947,8 +993,9 @@ for name, line1, line2 in selected_tles:
 
     network.add_satellite(sat)
 
-    print(
-        f"--- >> Gateway created: GW_{name}"
+    if PRINT_SIMULATION_DEBUG:
+        print(
+            f"--- >> Gateway created: GW_{name}"
     )
 
     gw = Gateway(
@@ -1005,7 +1052,6 @@ for cfg in lora_config:
     pkt_len = cfg["pkt_len"]
     
     
-
 with open(results_config_filename, "r") as f:
     results_config = json.load(f)
 
@@ -1021,10 +1067,6 @@ with open(link_margin_config_filename, "r") as f:
 tx_power_dbm=link_margin_config["iot_node"]["pt_dbm"]
 tx_power=10 ** ((tx_power_dbm - 30) / 10)
 
-
-
-
-
 print("\n--- > Generating random payloads ---")
 
 payloads = generate_payloads(
@@ -1033,10 +1075,6 @@ payloads = generate_payloads(
     #51,
     save_to=payload_generated_filename
 )
-
-
-
-
 
 print(
     "--- > Planning random transmissions ---"
@@ -1075,9 +1113,6 @@ generated_packets = len(
     network.transmissions
 )
 
-
-
-
 print_collision_summary(
     generated_packets,
     collided,
@@ -1094,8 +1129,7 @@ stats = apply_doppler_and_visibility(
     ts,
     MIN_ELEVATION,
     derivative_npoints, 
-    derivative_step_sec,
-    evaluation_time
+    derivative_step_sec
 )
 
 ############################################################

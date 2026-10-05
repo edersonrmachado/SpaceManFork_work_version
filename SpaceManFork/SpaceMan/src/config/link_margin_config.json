@@ -1,8 +1,8 @@
 {
     "iot_node": {
-        "pt_dbm": 13,
+        "pt_dbm": 21,
         "lftx": 1,
-        "gt": 4
+        "gt": 0
     },
     "propagation_losses": {
         "la": -0.11,
@@ -17,6 +17,5 @@
         "temp_0": 290,
         "gf": -1.0,
         "ta": 290
-    },
-    "tx_power": 13
+    }
 }
