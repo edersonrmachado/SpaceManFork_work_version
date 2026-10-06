@@ -1,23 +1,24 @@
 import json
 import random
 import math
-PRINT_MSG=False
+
+from filelock import FileLock
 
 
-def generate_endpoint_positions(endpoint_config_filename, output_filename):
+PRINT_ENDPOINT_DEBUG = False
+
+def generate_endpoint_positions(endpoint_config, simulation_config):
     """Generate endpoint positions based on config, store their position in output file"""
-
-    # read ed config file
-    with open(endpoint_config_filename, "r") as f:
-        ed_config = json.load(f)
-
-    latitude = ed_config["ed_geometry"]["central_point"]["lat"]
-    longitude = ed_config["ed_geometry"]["central_point"]["lon"]
-
-    radius_km = ed_config["ed_geometry"]["circle_radius_km"]
-
-    N = ed_config["number_of_eds"]
-    SEED = ed_config["ed_geometry"]["distribution_seed"]
+    
+    
+    latitude = endpoint_config.geometry.central_point.lat
+    longitude = endpoint_config.geometry.central_point.lon
+  
+    radius_km = endpoint_config.geometry.circle_radius_km
+    
+    N=endpoint_config.number_of_eds
+    
+    SEED = endpoint_config.geometry.distribution_seed
 
     # random seed if none
     if SEED is not None:
@@ -26,7 +27,6 @@ def generate_endpoint_positions(endpoint_config_filename, output_filename):
         random.seed(None)
 
     earth_radius_km = 6371.0
-
 
     # generate ed positions
     devices = []
@@ -72,16 +72,16 @@ def generate_endpoint_positions(endpoint_config_filename, output_filename):
             "lon": round(point_lon, 4)
         })
 
-
     # save devices position
-    with open(output_filename, "w") as f:
-        json.dump(devices, f, indent=4)
+    with FileLock(simulation_config.devices_filename + ".lock"):
+        with open(simulation_config.devices_filename, "w") as f:
+            json.dump(devices, f, indent=4)
 
     # print summary
-    if PRINT_MSG:
+    if PRINT_ENDPOINT_DEBUG:
         print("ED positions generated successfully")
         print("###################################")
-        print(f"Output file: {output_filename}")
+        print(f"Output file: {simulation_config.devices_filename}")
         print(f"Number of EDs: {N}")
         print(f"Radius from ref point: {radius_km} km")
         print(f"SEED: {SEED}")

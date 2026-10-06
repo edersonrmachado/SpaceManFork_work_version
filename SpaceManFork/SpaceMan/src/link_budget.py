@@ -9,21 +9,15 @@ from doppler_classes import *
 from doppler_tle import *
 from doppler_lora import *
 from doppler_libsat import *
+from config_classes import *
 import json 
 
 import math
 
+PRINT_LINK_MARGIN_DEBUG=False
+
 BOLTZMANN_CONSTANT = 1.38e-23  # Boltzmann constant in J/K
 LIGHT_SPEED = 299792458.0
-
-# simulation config
-simulation_config_filename="config/simulation_config.json"
-
-with open(simulation_config_filename, "r") as f:
-    simulation_config = json.load(f)
-
-PRINT_LINK_MARGIN_DEBUG=simulation_config["print_link_margin_debug"]
-
 
 def snr_min_db(sf):
     return -7.5 - 2.5 * (sf - 7)
@@ -58,12 +52,11 @@ def free_space_loss(sat_id, lora_cfg, ed_pos, tx_time):
     # compute satellite position relative to observer
     difference = satellite - local
     topocentric = difference.at(t) # calcula onde o sat esta no instante t
+    
     #alt, az, distance = topocentric.altaz()                  
     distance = topocentric.distance().m # distance in m
 
-    lfs=20*np.log10(distance)+20*np.log10(lora_cfg.fc)+20*np.log10(4*math.pi/LIGHT_SPEED) # free space propagation loss in dB
-
-    #print(tx_time,lfs)
+    lfs=20*np.log10(distance)+20*np.log10(lora_cfg.frequency)+20*np.log10(4*math.pi/LIGHT_SPEED) # free space propagation loss in dB
 
     return -lfs
 
@@ -85,36 +78,36 @@ def compute_link_margin(sat_id, lora_cfg, ed_pos, tx_time,link_config):
     """
 
     # iot node EIRP
-    pt_dbm =link_config["iot_node"]["pt_dbm"] # transmission power in dBm
+    pt_dbm =link_config.iot_node.pt_dbm # transmission power in dBm
     pt_dbw = pt_dbm - 30 # transmission power in dBW
-        
+    
     # free space propagation loss
     lfs = free_space_loss(sat_id, lora_cfg, ed_pos, tx_time)
     
     # other progagation losses
-    la = link_config["propagation_losses"]["la"] # atmospheric attenuation Loss in dB   
-    li = link_config["propagation_losses"]["li"] # ionospheric attenuation Loss in dB
-    ld = link_config["propagation_losses"]["ld"] # depointing Losses (antenna misalignment) in dB
-    lp = link_config["propagation_losses"]["lp"] # polarization Mismatch Loss in dB   
+    la = link_config.propagation_losses.la # atmospheric attenuation Loss in dB   
+    li = link_config.propagation_losses.li # ionospheric attenuation Loss in dB
+    ld = link_config.propagation_losses.ld # depointing Losses (antenna misalignment) in dB
+    lp = link_config.propagation_losses.lp # polarization Mismatch Loss in dB   
 
     l  = la + li + ld + lp # all propagation losses in dB
     
-    lftx = link_config["iot_node"]["lftx"] # transmitter feeder (equipment) loss in dB
-    gt = link_config["iot_node"]["gt"] # transmitter antenna gain in dBi
+    lftx = link_config.iot_node.lftx # transmitter feeder (equipment) loss in dB
+    gt = link_config.iot_node.gt # transmitter antenna gain in dBi
     eirp_dbm = pt_dbm - lftx + gt  # Effective Isotropic Radiated Power in dBm
     eirp_dbw = eirp_dbm - 30 # Effective Isotropic Radiated Power in dBW
-
+    
     # satellite figure of merit
-    gr = link_config["satellite_receiver"]["gr"] # satellite antenna gain in dBi
-    lfrx = link_config["satellite_receiver"]["lfrx"] # receiver feeder (equipment) loss in dB
-    nf = link_config["satellite_receiver"]["nf"] #	Receiver noise figure (EBYTE) in dB 		
-    temp_0 = link_config["satellite_receiver"]["temp_0"] #	refererence temperature	in K
+    gr = link_config.satellite_receiver.gr # satellite antenna gain in dBi
+    lfrx = link_config.satellite_receiver.lfrx # receiver feeder (equipment) loss in dB
+    nf = link_config.satellite_receiver.nf #	Receiver noise figure (EBYTE) in dB 		
+    temp_0 = link_config.satellite_receiver.temp_0 #	refererence temperature	in K
 
     tf = (10**(lfrx/10)-1)*temp_0 # receiver line noise temperature in K
     terx = (10**(nf/10)-1)*tf # receiver module noise temperature in K
 
-    gf= link_config["satellite_receiver"]["gf"] # receiver line gain in dB 
-    ta = link_config["satellite_receiver"]["ta"] # antenna noise temperature in K   
+    gf= link_config.satellite_receiver.gf # receiver line gain in dB 
+    ta = link_config.satellite_receiver.ta # antenna noise temperature in K   
 
     # System temperature 
     t_sis = ta + tf + terx/(10**(gf/10)) # system noise temperature in K

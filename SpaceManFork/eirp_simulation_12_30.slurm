@@ -1,7 +1,7 @@
 #!/bin/bash
 
 #SBATCH --job-name=simulation
-#SBATCH --array=1-12
+#SBATCH --array=1-3
 #SBATCH --cpus-per-task=4
 #SBATCH --mem=8G
 #SBATCH --time=04:00:00
@@ -48,4 +48,4 @@ cd src
 
 
 # run python script
-python "$SCRIPT"
+python "$SCRIPT"+ "$SPARAMETRE1"

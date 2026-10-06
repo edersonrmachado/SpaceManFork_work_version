@@ -88,14 +88,14 @@ legend_cross_marker_size = 4
 # ============================================================
 
 # read ed config file
-with open(endpoint_config_filename, "r") as f:
-    ed_config = json.load(f)
+#with open(endpoint_config_filename, "r") as f:
+#    ed_config = json.load(f)
 
-latitude = ed_config["ed_geometry"]["central_point"]["lat"]
-longitude = ed_config["ed_geometry"]["central_point"]["lon"]
+latitude = 48.8566#  -3.5158
+#ed_config["ed_geometry"]["central_point"]["lat"]
+longitude = 2.3522#23.5801#ed_config["ed_geometry"]["central_point"]["lon"]
 
-radius_km = ed_config["ed_geometry"]["circle_radius_km"]
-
+radius_km = 100#ed_config["ed_geometry"]["circle_radius_km"]
 
 
 # ============================================================
@@ -539,3 +539,5 @@ print(f"Radius: {radius_km} km")
 print("Circle: exact geodesic radius on WGS84")
 print("Axis: longitude/latitude in degrees")
 print("============================================")
+
+plt.show()

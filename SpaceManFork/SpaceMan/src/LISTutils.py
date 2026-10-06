@@ -153,7 +153,6 @@ def fetch_tle_from_celestrak(
 
     return tle_list
 
-
 ########################################
 # Filter Satellites
 ########################################

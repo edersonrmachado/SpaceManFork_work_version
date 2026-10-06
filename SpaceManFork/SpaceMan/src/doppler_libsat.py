@@ -22,14 +22,8 @@ LIGHTSPEED = 299792458
 tle_directory="TLE/"
 tle_filename="tle_active.txt"
 
-# simulation config
-simulation_config_filename="config/simulation_config.json"
-
-with open(simulation_config_filename, "r") as f:
-    simulation_config = json.load(f)
-
-PRINT_DOPPLER_DEBUG=simulation_config["print_doppler_debug"]
-COMPARE_DERIVATIVE_PRINT=False
+PRINT_DOPPLER_DEBUG = False
+COMPARE_DERIVATIVE_PRINT = False
 
 def loadSat(sat_name):
     """Return a satellite TLE object from its satellite name"""
@@ -145,7 +139,7 @@ def calculate_derivative_npoints(values, h_distance, npoints):
     return np.dot(coefficients, values) / h_distance
 
 
-def checkComm(sat_id, lora_cfg, ed_pos, tx_time, derivative_npoints, derivative_step_sec):
+def checkComm(sat_id, lora_cfg, ed_pos, tx_time, doppler_config):
     """Check whether a Doppler error occurs. Return True if it passes (no Doppler error), 
     False otherwise."""
 
@@ -170,12 +164,12 @@ def checkComm(sat_id, lora_cfg, ed_pos, tx_time, derivative_npoints, derivative_
 
     if PRINT_DOPPLER_DEBUG:
         alt, az, distance = topocentric.altaz()                                        
-
+                               
     # time vector for derivative computation 
-    tx_index = derivative_npoints // 2
+    tx_index = doppler_config.derivative_num_of_points // 2
     time_offsets = (
         np.arange(-tx_index, tx_index + 1)
-        * derivative_step_sec
+        * doppler_config.derivative_step_sec                            
     )
     datetime_derivative_times = [
         tx_datetime + datetime.timedelta(seconds=float(offset))
@@ -190,29 +184,37 @@ def checkComm(sat_id, lora_cfg, ed_pos, tx_time, derivative_npoints, derivative_
     r_norm_km = np.linalg.norm(pos_km, axis=0) # magnitude of the relative position vector in km
     dot_rv_km2_s = np.sum(pos_km * vel_km_s, axis=0) # dot product of the relative position and velocity vectors in km^2/s
     range_rate_m_s = (dot_rv_km2_s / r_norm_km) * 1000.0  # m/s    # range rate in m/s (v(t) = (r · v) / |r|)  
-    f_received = lora_cfg.fc * (1.0 - range_rate_m_s / LIGHTSPEED) # received frequency in Hz (f_received = f0 * (1 - v_rad / c))
-    doppler_hz_vec = f_received - lora_cfg.fc 
+    f_received = lora_cfg.frequency * (1.0 - range_rate_m_s / LIGHTSPEED) # received frequency in Hz (f_received = f0 * (1 - v_rad / c))
+    doppler_hz_vec = f_received - lora_cfg.frequency 
 
+    # Satellite altitude at tx_time
+    
+
+    #satellite_at_tx = satellite.at(t)
+
+    #height_km = wgs84.height_of(satellite_at_tx).km
+    #print(height_km)
+    
     # Doppler shift in Hz  
     doppler_hz_tx = doppler_hz_vec[tx_index]
 
     # Doppler rater in Hz/s
-    doppler_hz_sec_tx=calculate_derivative_npoints(doppler_hz_vec, derivative_step_sec, derivative_npoints)
-
+    doppler_hz_sec_tx=calculate_derivative_npoints(doppler_hz_vec, doppler_config.derivative_step_sec, doppler_config.derivative_num_of_points)
+    
     if PRINT_DOPPLER_DEBUG:
         if COMPARE_DERIVATIVE_PRINT:
-            print(f"Doppler rate central derivative ({derivative_npoints} points): {doppler_hz_sec_tx:.3f} Hz/s")
-            doppler_hz_sec_vec_gr=np.gradient(doppler_hz_vec,derivative_step_sec)
+            print(f"Doppler rate central derivative ({doppler_config.derivative_num_of_points} points): {doppler_hz_sec_tx:.3f} Hz/s")
+            doppler_hz_sec_vec_gr=np.gradient(doppler_hz_vec,doppler_config.derivative_step_sec)
             doppler_hz_sec_tx_gr=doppler_hz_sec_vec_gr[tx_index]
             print(f"Doppler rate with  gradient func (2 points): {doppler_hz_sec_tx_gr:.3f} Hz/s")
                     
     # evaluates doppler shift limit at syncronization
-    ds_pass=evaluates_static_doppler(doppler_hz_tx,lora_cfg.sf,lora_cfg.bw,lora_cfg.fc)
+    ds_pass=evaluates_static_doppler(doppler_hz_tx,lora_cfg.sf,lora_cfg.bw,lora_cfg.frequency)
 
     # packet number of symbols
     pkt_symbols = packet_bytes_to_symbols(lora_cfg)                  
-
-    # Evaluates doppler rate  
+   
+    # evaluates doppler rate  
     first_symbol_error = compute_first_doppler_error(lora_cfg,doppler_hz_sec_tx)
     dr_pass = first_symbol_error > pkt_symbols
     
@@ -244,7 +246,29 @@ def checkComm(sat_id, lora_cfg, ed_pos, tx_time, derivative_npoints, derivative_
             f"rate: {doppler_hz_sec_tx:>8.2f} Hz/s, "
             f"{pkt_symbols:>3} sym, "
             f"1st sym error: {first_symbol_error:>5}, "
-            f"ds_error: {ds_error:>3}, "
-            f"dr_error: {dr_error:>3}"
+            f"ds_error: {ds_error:>1}, "
+            f"dr_error: {dr_error:>1}"
         )
-    return status, max_pay_bytes, ds_error, dr_error 
+        print()
+    return status, max_pay_bytes, ds_error, dr_error
+
+
+def sat_height(sat_id,tx_time):
+    
+    satellite = loadSat(sat_id)
+    
+    # Load timescale and set time
+    ts = load.timescale()
+    
+    # Unix timestamp UTC -> datetime UTC
+    tx_datetime = datetime.datetime.fromtimestamp(tx_time, datetime.timezone.utc)
+
+    # datetime UTC -> Skyfield Time
+    t = ts.from_datetime(tx_datetime)
+
+    satellite_at_tx = satellite.at(t)
+
+    height_km = wgs84.height_of(satellite_at_tx).km
+   
+    return height_km
+    

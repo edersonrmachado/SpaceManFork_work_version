@@ -23,7 +23,7 @@ def packet_bytes_to_symbols(lora_cfg):
         max(np.ceil((8*lora_cfg.payload_len-4*lora_cfg.sf+28+16*lora_cfg.crc-20 *
             int(lora_cfg.ih))/(4*(lora_cfg.sf-2*int(de))))*(lora_cfg.cr+4), 0)
     n_payload = int(n_payload)
-
+  
     return n_payload + lora_cfg.preamble_len
 
 
