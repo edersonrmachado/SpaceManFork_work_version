@@ -60,14 +60,10 @@ config = Config(
     doppler=DopplerConfig()
 )
 
-print(config.lora.sf)
-
 ## Replace config for arguments if provided
 args = parse_arguments()
 apply_overrides(config, args)
 
-print(config.lora.sf)
-#quit()
 
 # files 
 tle_filename=config.satellite.tle_filename
@@ -81,9 +77,8 @@ endpoint_config = config.endpoint
 link_config = config.link_margin
 doppler_config = config.doppler
 
-#derivative_npoints=config.doppler.derivative_num_of_points
-#derivative_step_sec=config.doppler.derivative_step_sec
-
+# results 
+results_filename=config.simulation.results_file
 # simulation times 
 PRINT_SIMULATION_DEBUG=simulation_config.print_simulation_debug
 
@@ -1041,7 +1036,7 @@ lora_cfgs = [config.lora]
 pkt_len=config.lora.payload_len    
 
 #results
-results_filename=config.simulation.results_file
+
 
 # endpoint
 pkt_per_endpoint=config.endpoint.pkt_per_endpoint

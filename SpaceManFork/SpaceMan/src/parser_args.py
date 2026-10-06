@@ -180,6 +180,13 @@ ARGUMENTS = {
         float,
         "Doppler derivative step [s]"
     ),
+    
+     "results_file": (
+        "simulation.results_file",
+        str,
+        "Output CSV results file"
+    ),
+
 }
 
 
