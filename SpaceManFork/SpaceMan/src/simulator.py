@@ -6,6 +6,7 @@ from doppler_libsat import *
 from doppler_classes import *
 from doppler_utils import *
 from link_budget import *
+from distribution_models import *
 from generate_endpoint_positions import *
 from parser_args import *
 from datetime import datetime, timezone
@@ -64,7 +65,6 @@ config = Config(
 args = parse_arguments()
 apply_overrides(config, args)
 
-
 # files 
 tle_filename=config.satellite.tle_filename
 devices_filename=config.simulation.devices_filename
@@ -74,6 +74,14 @@ payload_generated_filename=config.simulation.payload_generated_filename
 simulation_config=config.simulation
 satellite_config = config.satellite 
 endpoint_config = config.endpoint
+
+
+print(f"enpoint policy: {endpoint_config.policy_tx} \ntotal tx density: {endpoint_config.total_tx_density_per_sec}")
+
+# Recalculate the number of EDs by Poisson distribution if ed density > 0
+if endpoint_config.ed_density_m2: # not zero or none
+   endpoint_config.number_of_eds=calculate_num_eds(endpoint_config.ed_density_m2, endpoint_config.geometry.circle_radius_km)
+
 link_config = config.link_margin
 doppler_config = config.doppler
 
@@ -105,6 +113,15 @@ SIMULATION_END = datetime(
 START_TS = SIMULATION_START.timestamp()
 END_TS = SIMULATION_END.timestamp()
 evaluation_time = END_TS-START_TS
+
+print(f"pkt_per_endpoint is None: {endpoint_config.pkt_per_endpoint}")
+
+
+
+if endpoint_config.total_tx_density_per_sec: # not zero or none
+    ed_tx_density_per_sec = endpoint_config.total_tx_density_per_sec/endpoint_config.number_of_eds 
+else:    
+    ed_tx_density_per_sec = None
 
 # elevation angle
 MIN_ELEVATION = satellite_config.min_elevation_angle
@@ -226,7 +243,7 @@ def print_phy_summary(network):
     freqs = sorted(
         set(cfg.frequency for _, _, cfg in network.transmissions)
     )
-    print(network.transmissions[0][2])
+    #print(network.transmissions[0][2])
     
     #for i in range(len(network.transmissions)):
         
@@ -250,7 +267,7 @@ def print_phy_summary(network):
             print(f"LDRO        : [ON]")
         case 2: 
             print(f"LDRO        : [AUTO]")
-
+    print(f"Tx policy:  : [{endpoint_config.policy_tx}]")
 
 def print_collision_summary(
     generated_packets,
@@ -762,7 +779,7 @@ def print_final_summary(
     )
             
     # evaluation statistics (energy in joules)
-
+    
     successfully_tx_received = stats['successfully_received']
    
     pkt_energy = stats['toa'] * tx_power 
@@ -874,7 +891,10 @@ def print_final_summary(
                 "duty_cycle":round(duty_cycle,3),
                 
                 # other
-                "visible_sat_heigh_mean":round(stats['visible_sat_height_mean'],1)
+                #"visible_sat_heigh_mean":round(stats['visible_sat_height_mean'],1)
+                "visible_sat_heigh_mean": (
+                    round(stats['visible_sat_height_mean'], 1) if stats['visible_sat_height_mean'] is not None else None
+                )
             }
 
             writer = csv.DictWriter(
@@ -1039,7 +1059,7 @@ pkt_len=config.lora.payload_len
 
 
 # endpoint
-pkt_per_endpoint=config.endpoint.pkt_per_endpoint
+pkt_per_endpoint=endpoint_config.pkt_per_endpoint
 policy_tx=config.endpoint.policy_tx
 
 # link margin
@@ -1058,7 +1078,8 @@ print(
     "--- > Planning random transmissions ---"
 )
 
-random_transmissions(
+
+mean_tx_per_ed = random_transmissions(
     network,
     payloads,
     lora_cfgs,
@@ -1066,8 +1087,12 @@ random_transmissions(
     t_start=START_TS,
     t_end=END_TS,
     n_packets=pkt_per_endpoint,
-    seed=None
+    seed=None,
+    ed_tx_density=ed_tx_density_per_sec
 )
+
+if mean_tx_per_ed is not None:
+    endpoint_config.pkt_per_endpoint = round(mean_tx_per_ed,1)
 
 ############################################################
 # PHY SUMMARY

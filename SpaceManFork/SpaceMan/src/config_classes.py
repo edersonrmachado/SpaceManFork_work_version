@@ -39,15 +39,17 @@ class CentralPointConfig:
 @dataclass
 class EDGeometryConfig:
     central_point: CentralPointConfig
-    circle_radius_km: float = 100.0
+    circle_radius_km: float = 25.0
     distribution_seed: Optional[int] = None
 
 @dataclass
 class EndpointConfig:
     geometry: EDGeometryConfig
-    number_of_eds: int = 20
-    pkt_per_endpoint: int = 10
-    policy_tx: str = "random_secure"
+    number_of_eds: int | None = None
+    ed_density_m2: float | None = 1e-8
+    pkt_per_endpoint: int | None = None
+    total_tx_density_per_sec: float | None = 0.011
+    policy_tx: str = "poisson" # modes: {random_initial, random_secure,  poisson}
 
 @dataclass
 class LoRaConfig:
@@ -58,7 +60,7 @@ class LoRaConfig:
     cr: Optional[int] = 1 # default 4/5
     crc: Optional[int] = 1 # 0 deactivated 1 activated (2 bytes)
     ih: Optional[bool] = False # False implicit True explicit
-    ldro: Optional[int] = 0 # 0=OFF 1=ON 2=AUTO (activated Ts>16.38ms)
+    ldro: Optional[int] = 0 # 0 = OFF 1 = ON 2 = AUTO (activated Ts > 16.38ms)
     preamble_len: Optional[int] = 8
     
 @dataclass

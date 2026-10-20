@@ -1,5 +1,7 @@
 # LISTutils.py
 
+from distribution_models import *
+
 import random
 import json
 import requests
@@ -44,7 +46,7 @@ def calculate_lora_toa(
     # Low Data Rate Optimization
     ########################################
     
-    if de is 2:
+    if de == 2: 
         #de = 1 if (sf >= 11 and bw == 125) else 0
        
         if t_sym >= 0.016384:
@@ -183,18 +185,22 @@ def random_transmissions(
     t_start=0,
     t_end=1000,
     n_packets=1,
-    seed=None
+    seed=None,
+    ed_tx_density=None
 ):
 
     rng = random.Random(seed)
     
    
-    
+    pkt_per_device_vet=[]
     for device in network.devices.all_devices():
         #print(f"policy: {policy_tx}")
         
         match policy_tx:  
             case "random_initial":
+                if ed_tx_density:
+                    raise ValueError("Transmission policy is random initial  but total density by sec was provided.")
+                
                 times = sorted(
                     #round(random.uniform(t_start, t_end), 3)
                     round(rng.uniform(t_start, t_end), 3)
@@ -238,6 +244,9 @@ def random_transmissions(
                                 (t, toa, pkt_payload, cfg)
                             )
             case "random_secure":
+                if ed_tx_density:
+                    raise ValueError("Transmission policy is random secure but total density by sec was provided.")
+            
                 valid_transmissions = []
                 cfg = random.choice(lora_cfgs) # just one config for each simulation
                 pkt_payload = random.choice(payloads)
@@ -246,12 +255,29 @@ def random_transmissions(
                
                 for t in times:
                     valid_transmissions.append((t, toa, pkt_payload, cfg))
+            
+            case "poisson":
+                if ed_tx_density is None or ed_tx_density==0:
+                    raise ValueError("Transmission policy is poisson but total density by sec was not provided.")
+                
+                valid_transmissions = []
+                cfg = random.choice(lora_cfgs) # just one config for each simulation
+                pkt_payload = random.choice(payloads)
+                toa = calculate_lora_toa(len(pkt_payload), cfg.sf, cfg.bw,de=cfg.ldro)
+                period_s=t_end - t_start
+               
+                n_packets_poisson=calculate_num_tx_per_ed(ed_tx_density,period_s)
+                pkt_per_device_vet.append(n_packets_poisson)
+                times = generate_random_secure(t_start, t_end, n_packets_poisson, toa)
+                               
+                for t in times:
+                    valid_transmissions.append((t, toa, pkt_payload, cfg)) 
                        
             case _:
                 raise ValueError("Transmission policy doesn't match.")
-            
         
-        t
+        
+        
         ########################################
         # Create packets
         ########################################
@@ -267,7 +293,13 @@ def random_transmissions(
                 pkt,
                 cfg
             )
-
+    if policy_tx == "poisson":
+        mean_pck_per_device=np.mean(pkt_per_device_vet)
+        #print(np.sum(pkt_per_device_vet))
+        return mean_pck_per_device
+    else:
+        return None
+    
 ###########################
 ## ADDED: generate random number keeping the number of requested transmission 
 ###########################

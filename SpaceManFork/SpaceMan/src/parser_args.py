@@ -33,11 +33,27 @@ ARGUMENTS = {
         int,
         "Number of end devices"
     ),
+    "devices_density": (
+        "endpoint.ed_density_m2",
+        float,
+        "Device density [devices/m^2]"
+    ),
     "pkt_per_ed": (
         "endpoint.pkt_per_endpoint",
         int,
         "Packets per endpoint"
     ),
+     "total_tx_density_per_sec": (
+        "endpoint.total_tx_density_per_sec",
+        float,
+        "Total transmission density [transmissions/s]"
+    ),
+    "policy_tx": (
+        "endpoint.policy_tx",
+        str,
+        "Transmission policy {random_initial, random_secure, poisson}"
+    ),
+
 
     # LoRa
     "sf": (
