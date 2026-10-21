@@ -295,6 +295,12 @@ def random_transmissions(
             )
     if policy_tx == "poisson":
         mean_pck_per_device=np.mean(pkt_per_device_vet)
+        #variance = np.var(pkt_per_device_vet)
+        #print(f"variance {variance}")
+        #min_value = np.min(pkt_per_device_vet)
+        #max_value = np.max(pkt_per_device_vet)
+        #print("Minimum:", min_value)
+        #print("Maximum:", max_value)
         #print(np.sum(pkt_per_device_vet))
         return mean_pck_per_device
     else:

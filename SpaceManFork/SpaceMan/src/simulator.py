@@ -76,7 +76,7 @@ satellite_config = config.satellite
 endpoint_config = config.endpoint
 
 
-print(f"enpoint policy: {endpoint_config.policy_tx} \ntotal tx density: {endpoint_config.total_tx_density_per_sec}")
+#print(f"enpoint policy: {endpoint_config.policy_tx} \ntotal tx density: {endpoint_config.total_tx_density_per_sec}")
 
 # Recalculate the number of EDs by Poisson distribution if ed density > 0
 if endpoint_config.ed_density_m2: # not zero or none
@@ -114,9 +114,7 @@ START_TS = SIMULATION_START.timestamp()
 END_TS = SIMULATION_END.timestamp()
 evaluation_time = END_TS-START_TS
 
-print(f"pkt_per_endpoint is None: {endpoint_config.pkt_per_endpoint}")
-
-
+#print(f"pkt_per_endpoint is None: {endpoint_config.pkt_per_endpoint}")
 
 if endpoint_config.total_tx_density_per_sec: # not zero or none
     ed_tx_density_per_sec = endpoint_config.total_tx_density_per_sec/endpoint_config.number_of_eds 
@@ -837,6 +835,8 @@ def print_final_summary(
                 "central_point_lon": endpoint_config.geometry.central_point.lon,
                 "num_of_eds": endpoint_config.number_of_eds,
                 "pkt_per_endpoint": endpoint_config.pkt_per_endpoint,
+                "ed_density_m2": endpoint_config.ed_density_m2,
+                "total_tx_density_per_sec": endpoint_config.total_tx_density_per_sec,
                 
                 # satellite config
                 "num_sats": num_sats,

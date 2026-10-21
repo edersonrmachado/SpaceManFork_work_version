@@ -48,7 +48,7 @@ class EndpointConfig:
     number_of_eds: int | None = None
     ed_density_m2: float | None = 1e-8
     pkt_per_endpoint: int | None = None
-    total_tx_density_per_sec: float | None = 0.011
+    total_tx_density_per_sec: float | None = 0.01124
     policy_tx: str = "poisson" # modes: {random_initial, random_secure,  poisson}
 
 @dataclass
