@@ -32,7 +32,7 @@ def loadSat(sat_name):
     
     if not sat_file.exists():
         # search TLE locally
-        sat_find_loccaly= search_satellite_tle_locally(sat_name) 
+        sat_find_loccaly= search_satellite_tle_locally(sat_name,tle_filename) 
 
         if not sat_find_loccaly:
             # download TLE from network
