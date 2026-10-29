@@ -4,6 +4,9 @@ import time
 from skyfield.api import load, wgs84
 from doppler_libsat import *
 
+
+from filelock import FileLock
+
 def packet_bytes_to_symbols(lora_cfg):
     """Return the number of symbols corresponding to a LoRa packet"""
     

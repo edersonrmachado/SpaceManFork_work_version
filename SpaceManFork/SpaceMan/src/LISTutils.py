@@ -1,4 +1,5 @@
 # LISTutils.py
+from filelock import FileLock
 
 from distribution_models import *
 
@@ -366,9 +367,16 @@ def generate_payloads(
 
 def load_devices_from_json(network, path):
 
-    with open(path, "r") as f:
+    lock_filename = path + ".lock"
+        
+    # using lock to avoid race conditions when writing to the CSV file
+    with FileLock(lock_filename):
+        with open(path, "r") as f:
+            devices_data = json.load(f)
 
-        devices_data = json.load(f)
+    #with open(path, "r") as f:
+
+    #    devices_data = json.load(f)
 
     for dev in devices_data:
 
