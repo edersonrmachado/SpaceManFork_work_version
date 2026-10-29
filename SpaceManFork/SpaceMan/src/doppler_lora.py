@@ -10,7 +10,7 @@ def packet_bytes_to_symbols(lora_cfg):
     de=lora_cfg.ldro 
     
     # LDRO in auto mode, de=1 if t_symb>=16.386ms 
-    if de is 2:
+    if de==2:
         #de = 1 if (lora_cfg.sf >= 11 and lora_cfg.bw == 125e3) else 0
         tsymb=(2**(lora_cfg.sf))/lora_cfg.bw 
         if tsymb >= 0.016384:
