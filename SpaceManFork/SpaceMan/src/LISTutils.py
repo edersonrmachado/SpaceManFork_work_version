@@ -362,7 +362,7 @@ def generate_payloads(
 
 
 ########################################
-# Load Devices
+# Load Devices from file
 ########################################
 
 def load_devices_from_json(network, path):
@@ -377,6 +377,27 @@ def load_devices_from_json(network, path):
     #with open(path, "r") as f:
 
     #    devices_data = json.load(f)
+
+    for dev in devices_data:
+
+        dx = Device(
+            dev["devEui"],
+            Position(
+                dev["lat"],
+                dev["lon"],
+                alt=dev.get("alt")
+            ),
+            network=network
+        )
+
+        network.devices.add_device(dx)
+
+########################################
+# Load devices 
+########################################
+def load_devices(network, devices_list):
+    
+    devices_data = devices_list
 
     for dev in devices_data:
 

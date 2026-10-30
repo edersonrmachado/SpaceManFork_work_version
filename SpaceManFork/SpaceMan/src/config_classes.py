@@ -6,7 +6,10 @@ from typing import Optional
 class SimulationConfig:
     print_simulation_debug: bool = False
     generate_payload_file: bool = False
-    devices_filename: str = "config/endpoint_positions/devices.json"
+    save_devices: bool = False
+    save_satellites: bool = False
+    satellite_filename: str = "../data/satellites.json"
+    devices_filename: str = "../data/devices.json"
     payload_generated_filename: str = "../data/random_payloads.json"
     
     simulation_start_year: int = 2026
@@ -24,7 +27,7 @@ class SimulationConfig:
     simulation_end_second: int = 0
 
     results_file: str = "../data/results_example.csv"
-
+    
 @dataclass
 class SatelliteConfig:
     num_sats: int = 5

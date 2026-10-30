@@ -29,6 +29,7 @@ from LISTutils import (
     random_transmissions,
     generate_payloads,
     load_devices_from_json,
+    load_devices,
     check_collisions,
     fetch_tle_from_celestrak,
     filter_tles_by_name,
@@ -114,8 +115,7 @@ START_TS = SIMULATION_START.timestamp()
 END_TS = SIMULATION_END.timestamp()
 evaluation_time = END_TS-START_TS
 
-#print(f"pkt_per_endpoint is None: {endpoint_config.pkt_per_endpoint}")
-
+# load ed tx density if passed
 if endpoint_config.total_tx_density_per_sec: # not zero or none
     ed_tx_density_per_sec = endpoint_config.total_tx_density_per_sec/endpoint_config.number_of_eds 
 else:    
@@ -125,7 +125,7 @@ else:
 MIN_ELEVATION = satellite_config.min_elevation_angle
 
 # generate Eds position
-generate_endpoint_positions(endpoint_config, simulation_config)
+devices_list = generate_endpoint_positions(endpoint_config, simulation_config)
 
 # find satellites TLEs locally/network
 def select_satellite_names(satellite_config):
@@ -156,6 +156,14 @@ def select_satellite_names(satellite_config):
     return satellite_names
 
 SATELLITES=select_satellite_names(config.satellite)
+
+# save satellites names in file is specified
+if simulation_config.save_satellites:
+    satellite_lock_filename = simulation_config.satellite_filename + ".lock"
+    with FileLock(satellite_lock_filename):
+        with open(simulation_config.satellite_filename , "w", encoding="utf-8") as f:
+            json.dump(SATELLITES,f,indent=4)
+            
 
 
 ############################################################
@@ -973,11 +981,15 @@ print("--- > Network created ---")
 ############################################################
 
 print("\n--- Defining Devices ---")
-
-load_devices_from_json(
-    network,
-    devices_filename
-)
+if simulation_config.save_devices:
+    load_devices_from_json(
+        network,
+        devices_filename
+    )
+    print("load devices from file")
+else:
+    print(" load devices")
+    load_devices(network,devices_list)
 
 print("--- > Devices added to the network ---")
 

@@ -196,12 +196,28 @@ ARGUMENTS = {
         float,
         "Doppler derivative step [s]"
     ),
-    
-     "results_file": (
+    # simulation
+    "results_file": (
         "simulation.results_file",
         str,
         "Output CSV results file"
     ),
+    "save_devices": (
+        "simulation.save_devices",  
+        str_to_bool,
+        "Save devices to JSON file: true/false"
+    ),
+    "save_satellites": (
+            "simulation.save_satellites",  
+            str_to_bool,
+            "Save satellites to JSON file: true/false"
+        ),
+    "print_sim_debug":(
+        "simulation.print_simulation_debug",   
+        str_to_bool,
+        "Print simulation debug: true/false"
+    ) 
+
 
 }
 

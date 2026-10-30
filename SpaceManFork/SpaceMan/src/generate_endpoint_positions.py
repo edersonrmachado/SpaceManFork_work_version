@@ -72,17 +72,25 @@ def generate_endpoint_positions(endpoint_config, simulation_config):
             "lon": round(point_lon, 4)
         })
 
-    # save devices position
-    with FileLock(simulation_config.devices_filename + ".lock"):
-        with open(simulation_config.devices_filename, "w") as f:
-            json.dump(devices, f, indent=4)
-
     # print summary
     if PRINT_ENDPOINT_DEBUG:
         print("ED positions generated successfully")
         print("###################################")
-        print(f"Output file: {simulation_config.devices_filename}")
+        if simulation_config.save_devices:
+            print(f"Output file: {simulation_config.devices_filename}")
         print(f"Number of EDs: {N}")
         print(f"Radius from ref point: {radius_km} km")
         print(f"SEED: {SEED}")
         print("###################################")
+
+    # save devices if specified
+    if simulation_config.save_devices:
+        # save devices position
+        with FileLock(simulation_config.devices_filename + ".lock"):
+            with open(simulation_config.devices_filename, "w") as f:
+                json.dump(devices, f, indent=4)
+        return None
+    else:
+        return devices
+    
+   
