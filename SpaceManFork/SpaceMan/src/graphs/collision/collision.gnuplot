@@ -25,11 +25,13 @@ set boxwidth 0.5
 set boxdepth 0.47
 set style fill solid 0.6 border lc rgb "0x555555"
 
-set key at screen 1, 0.87 left top
-set key spacing 0.8
-set key samplen 0.8
-set key width -18
-set key font "Arial,10"
+#set key at screen 1, 0.87 left top
+#set key spacing 0.8
+#set key samplen 0.8
+#set key width -18
+#set key font "Arial,10"
+
+unset key
 
 set label textcolor rgb "black"
 set label "0.8" at 7,1.13,1.5 font "Arial,10.5" center front
