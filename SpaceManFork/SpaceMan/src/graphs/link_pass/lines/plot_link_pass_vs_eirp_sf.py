@@ -10,10 +10,11 @@ plt.rcParams['font.family'] = 'STIXGeneral'
 # Input file
 filename = "../eirp_variable_poisson_all_regions.csv"
 
-# Output files
-fig_name_pdf = "pdr_vs_eirp.pdf"
-fig_name_eps = "pdr_vs_eirp.eps"
-fig_name_svg = "pdr_vs_eirp.svg"
+# Output files for figures
+fig_name_pdf = "link_pass_vs_eirp.pdf"
+fig_name_eps = "link_pass_vs_eirp.eps"
+fig_name_svg = "link_pass_vs_eirp.svg"
+csv_output = "average_link_margin_pass_rate_by_region_sf_eirp.csv"
 
 # Load dataset
 df = pd.read_csv(filename)
@@ -21,19 +22,33 @@ df = pd.read_csv(filename)
 # Create region name based on frequency
 regions = {
     868.30: "EU868",
-    433.375: "EU433",
+    433.375:"EU433",
     921.4: "AS915",
     473.3: "CN470"
 }
 
 df["region"] = df["freqMHz"].map(regions)
 
-# Aggregate data
+# Calculate and save the aggregated matrix/CSV
+result = (
+    df.groupby(["sf", "eirp_dbm", "region"])["link_margin_pass_rate"]
+      .mean()
+      .unstack()
+      .round(2)
+)
+
+print("Table:")
+print(result)
+
+# Save file
+result.to_csv(csv_output)
+
+# Aggregate data for plotting
 df_agg = (
-    df.groupby(["region", "eirp_dbm", "sf"])["final_pdr"]
+    df.groupby(["region", "eirp_dbm", "sf"])["link_margin_pass_rate"]
       .mean()
       .reset_index()
-      .rename(columns={"final_pdr": "mean_pdr"})
+      .rename(columns={"link_margin_pass_rate": "mean_pass_rate"})
 )
 
 # Figure configuration
@@ -50,12 +65,15 @@ lw_plots = 0.7
 markersize_plots = 3.0
 alpha_plots = 0.8
 
-ylim_min = -20
-ylim_max = 120
+ylim_min = -10
+ylim_max = 110
 
 alpha_grid = 0.4
 lw_grid = 0.8
 frame_leg_alpha = 0.0
+
+space_handle_leg = 1
+space_handle_pad_leg = 0.3
 
 # Colors for each region
 colors = {
@@ -91,12 +109,11 @@ for region in colors:
 
     if region_data.empty:
         continue
-
         
     # Connect all SF points belonging to the same region
     ax.plot(
         region_data["eirp_dbm"],
-        region_data["mean_pdr"],
+        region_data["mean_pass_rate"],
         linestyle="-",
         linewidth=lw_plots,
         color=colors[region],
@@ -109,7 +126,7 @@ for region in colors:
 
         ax.scatter(
             group["eirp_dbm"],
-            group["mean_pdr"],
+            group["mean_pass_rate"],
             marker=sf_markers.get(int(sf_val), "o"),
             s=markersize_plots**2,
             color=colors[region],
@@ -119,7 +136,7 @@ for region in colors:
 
 # Axis labels
 ax.set_xlabel("EIRP (dBm)", fontsize=fontsize_xy_labels)
-ax.set_ylabel("Mean PDR (%)", fontsize=fontsize_xy_labels)
+ax.set_ylabel("Mean Link Margin Pass Rate (%)", fontsize=fontsize_xy_labels)
 
 # Ticks and limits
 ax.xaxis.set_minor_locator(MultipleLocator(1))
@@ -177,9 +194,7 @@ sf_handles = [
     for sf in sf_markers
 ]
 
-# Combine handles:
-# First column = Regions
-# Second and third columns = SFs
+# Combine handles
 all_handles = region_handles + sf_handles
 
 ax.legend(
@@ -190,8 +205,8 @@ ax.legend(
     loc="upper left",
     ncol=3,
     framealpha=frame_leg_alpha,
-    handlelength=1,
-    handletextpad=0.3,  # Reduce distance between symbols and text
+    handlelength=space_handle_leg,
+    handletextpad=space_handle_pad_leg,
     columnspacing=0.8,
     labelspacing=0.5
 )
@@ -200,7 +215,7 @@ ax.legend(
 plt.tight_layout()
 plt.subplots_adjust(top=0.72)
 
-# Save figure
+# Save figure in multiple formats
 plt.savefig(
     fig_name_pdf,
     dpi=dpi_set,

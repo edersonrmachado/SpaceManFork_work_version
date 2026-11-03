@@ -4,7 +4,8 @@ import pandas as pd
 plt.rcParams['mathtext.fontset'] = 'stix'
 plt.rcParams['font.family'] = 'STIXGeneral'
 # input file
-filename="visible_variable_all_regions.csv"
+#filename="visible_variable_all_regions.csv"
+filename="visibility_5to100_125_150.csv"
 
 # outputs
 fig_name_pdf="visibility.pdf" 
@@ -51,17 +52,21 @@ lw_plots=0.9
 markersize_plots=3
 alpha_plots=0.7
 lw_legend=0.5
-ylim_min=0
-ylim_max=120
-alpha_grid=0.45
-leg_right=0.9
-leg_hight=-0.03
-lw_grid=0.8
-frame_leg_alpha=0.0
+ylim_min = 0
+ylim_max = 100
+alpha_grid = 0.45
+leg_right = 0.91
+leg_hight = 0.04
+lw_grid = 0.78
+frame_leg_alpha=0.9
 color_eu433="#4682B4" 
 color_eu868="#E69F00"
 color_as915="#d62728"
 color_cn470="#2ca02c"
+
+space_handle_leg = 1.2
+space_handle_pad_leg = 0.5
+leg_box_color= "#555555"
 
 
 fig, ax = plt.subplots( figsize=(fig_width, fig_height), dpi=dpi_set, facecolor=fig_facecolor)
@@ -70,9 +75,9 @@ fig, ax = plt.subplots( figsize=(fig_width, fig_height), dpi=dpi_set, facecolor=
 ax.plot(
     df_result.index,
     df_result["EU433"],
-    marker="o",
+    #marker="o",
     linewidth=lw_plots,
-    markersize=markersize_plots,
+    #markersize=markersize_plots,
     color=color_eu433,
     alpha=alpha_plots,
     label="EU433",
@@ -80,9 +85,9 @@ ax.plot(
 ax.plot(
     df_result.index,
     df_result["EU868"],
-    marker="s",
+    #marker="s",
     linewidth=lw_plots,
-    markersize=markersize_plots,
+    #markersize=markersize_plots,
     color=color_eu868,
     alpha=alpha_plots,
     label="EU868",
@@ -90,9 +95,9 @@ ax.plot(
 ax.plot(
     df_result.index,
     df_result["AS915"],
-    marker="d",
+    #marker="d",
     linewidth=lw_plots,
-    markersize=markersize_plots,
+    #markersize=markersize_plots,
     color=color_as915,
     alpha=alpha_plots,
     label="AS915",
@@ -100,9 +105,9 @@ ax.plot(
 ax.plot(
     df_result.index,
     df_result["CN470"],
-    marker="^",
+    #marker="^",
     linewidth=lw_plots,
-    markersize=markersize_plots,
+    #markersize=markersize_plots,
     color=color_cn470,
     alpha=alpha_plots,
     label="CN470",
@@ -112,13 +117,14 @@ ax.set_xlabel("Number of satellites", fontsize=fontsize_xy_labels)
 ax.set_ylabel("Visibility rate (%)", fontsize=fontsize_xy_labels)
 
 # ticks
-ax.set_xticks(df_result.index)
+#ax.set_xticks(df_result.index)
+ax.set_xticks([5, 25, 50, 75, 100, 125, 150])
 ax.set_yticks(range(0, 101, 20))  
 ax.set_ylim([ylim_min,ylim_max])
 ax.tick_params(axis="both", labelsize=fontsize_xticks)
 
 # legend
-ax.legend(
+leg=ax.legend(
     title="Region",
     linewidth=lw_legend,
     fontsize=fontsize_legend,
@@ -126,7 +132,14 @@ ax.legend(
     loc="lower right",
     bbox_to_anchor=(leg_right,leg_hight,),  
     framealpha=frame_leg_alpha,
+    handlelength=space_handle_leg,
+    handletextpad = space_handle_pad_leg  # Reduce distance between symbols and text
 )
+
+leg.get_frame().set_linewidth(lw_legend)
+
+# 3. Define a COR da borda (Exemplos: "black", "#333333", edge_color_variable)
+leg.get_frame().set_edgecolor(leg_box_color)
 ax.grid(True, linestyle="--", alpha=alpha_grid, linewidth=lw_grid)
 
 # save fig
