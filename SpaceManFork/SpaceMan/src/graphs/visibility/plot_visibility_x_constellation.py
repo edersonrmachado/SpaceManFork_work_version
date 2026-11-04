@@ -5,7 +5,7 @@ plt.rcParams['mathtext.fontset'] = 'stix'
 plt.rcParams['font.family'] = 'STIXGeneral'
 # input file
 #filename="visible_variable_all_regions.csv"
-filename="visibility_5to100_125_150.csv"
+filename="visibility_5to130_150.csv"
 
 # outputs
 fig_name_pdf="visibility.pdf" 
